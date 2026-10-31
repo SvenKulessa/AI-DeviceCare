@@ -1,0 +1,22 @@
+name: Governance validation (P0)
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify-governance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out current head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check Node.js availability
+        run: node --version
+      - name: Test governance-as-code negative and positive cases
+        run: node --test scripts/validate-governance.test.mjs
+      - name: Validate repository policy and skill registry
+        run: node scripts/validate-governance.mjs
