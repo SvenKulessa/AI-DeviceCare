@@ -30,9 +30,14 @@ A privacy-first Android security and device-health platform, designed as two dif
 ## Documentation
 
 - [Repository & agent rules](AGENTS.md)
+- [Capital-AI adapted skills](.agents/skills/README.md) and [Governance-as-Code](docs/GOVERNANCE-AS-CODE.md)
 - [Planned modular architecture and milestones](docs/ARCHITECTURE.md)
 - [Android capability and Play permission matrix](docs/ANDROID_CAPABILITY_MATRIX.md)
 - [Product master roadmap — GitHub Issue #1](https://github.com/SvenKulessa/AI-DeviceCare/issues/1)
+
+## One project folder
+
+This repository root is the only Gradle project root. Both future apps are Android modules under `apps/`, supported by reusable `core/` and `features/` modules. The P0 policy validator guards against nested project settings and unreviewed high-risk manifest permissions. Run `node --test scripts/validate-governance.test.mjs` and `node scripts/validate-governance.mjs` (Node.js 20+).
 
 ## Contributing / development state
 
