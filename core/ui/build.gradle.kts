@@ -4,7 +4,7 @@ plugins {
 }
 android {
     namespace = "online.capitalai.devicecare.core.ui"
-    compileSdk = 37
+    compileSdk = 36
     defaultConfig { minSdk = 26 }
     buildFeatures { compose = true }
     compileOptions {
