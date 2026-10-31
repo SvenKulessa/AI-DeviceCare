@@ -9,6 +9,14 @@ Build two differentiated, privacy-first Android products using a shared modular 
 - **AI-DeviceCare+**: distinct business product for authorized organizations, tenant-isolated fleet posture, policies, and reporting.
 The commercial objective is staged Google Play publication. A feature is only sellable when implemented, tested, supportable and compliant.
 
+## Repository authority, project structure and skills
+
+- This root `AGENTS.md` is the **only repository-wide authorizing policy**. Machine-readable `governance/project-policy.json`, documentation, skills and workflows validate or explain this policy but do not create independent approvals or grant tools.
+- Adopt evidence-first, least-privilege and compact PR sequencing ideas from [Capital-AI `SOLO_MAINTAINER_FLOW@1`](https://github.com/SvenKulessa/Capital-AI/blob/main/AGENTS.md) **as patterns only**. Its finance regulations, production deploys, required Docker checks, Render workspace and merge delegation do not apply to AI-DeviceCare.
+- Maintain **one repository root = one Gradle project root** (`AI-DeviceCare/`). Exactly one root `settings.gradle.kts`; consumer `:apps:devicecare` and business `:apps:devicecare-plus` are modules, not independent nested projects or repositories; shared `core/*` and `features/*` are reusable modules.
+- Follow `.agents/skills/registry.json` to choose task-specific skills, possibly several for cross-cutting scope. These are advisory operating playbooks and do not add a human approval, branch check, plugin, Android permission, SDK entitlement or merge authority.
+- Run `node scripts/validate-governance.mjs` and `node --test scripts/validate-governance.test.mjs` when working with governance, modules or manifests. The read-only PR workflow is not automatically a branch-protection Required Check. Current build/test scope must be reported accurately.
+
 ## Non-negotiable safeguards
 1. **No root, no ADB, no bypasses.** Use supported Android APIs and documented OS permission flows. Never claim the ability to clear all third-party private caches, read every system setting, or change arbitrary apps' permissions.
 2. **Consent before action.** Sensitive permissions are off by default; every destructive or privilege-bearing action has a clear preview, risk explanation, explicit user consent and post-action validation. No stealth device modification.
