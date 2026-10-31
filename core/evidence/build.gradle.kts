@@ -1,7 +1,7 @@
 plugins { id("com.android.library") }
 android {
     namespace = "online.capitalai.devicecare.core.evidence"
-    compileSdk = 37
+    compileSdk = 36
     defaultConfig { minSdk = 26 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
