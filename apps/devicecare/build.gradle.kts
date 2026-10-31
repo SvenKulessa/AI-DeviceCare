@@ -4,7 +4,7 @@ plugins {
 }
 android {
     namespace = "online.capitalai.devicecare"
-    compileSdk = 37
+    compileSdk = 36
     defaultConfig {
         applicationId = "online.capitalai.devicecare"
         minSdk = 26
