@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "AI_DEVICECARE_SKILLS@1",
+  "authority": "AGENTS.md",
+  "projectRoot": ".",
+  "sourceReference": "https://github.com/SvenKulessa/Capital-AI/tree/main/.agents/skills",
+  "skillIds": [
+    "mobile-engineering",
+    "trust-engineering",
+    "platform-engineering",
+    "platform-observability",
+    "incident-response",
+    "accessibility-engineering",
+    "ai-engineering",
+    "revenue-engineering"
+  ],
+  "skills": [
+    {
+      "id": "mobile-engineering",
+      "path": ".agents/skills/mobile-engineering/SKILL.md",
+      "owner": "MOBILE",
+      "description": "Android API, min/target SDK, Permissions, Play Signing and release"
+    },
+    {
+      "id": "trust-engineering",
+      "path": ".agents/skills/trust-engineering/SKILL.md",
+      "owner": "TRUST",
+      "description": "AppSec, threat model, Play policy, privacy and dependency rights"
+    },
+    {
+      "id": "platform-engineering",
+      "path": ".agents/skills/platform-engineering/SKILL.md",
+      "owner": "PLATFORM",
+      "description": "Gradle mono-project, GitHub CI, reproducible builds and supply chain"
+    },
+    {
+      "id": "platform-observability",
+      "path": ".agents/skills/platform-observability/SKILL.md",
+      "owner": "PLATFORM",
+      "description": "Battery-aware logs, diagnostics, privacy and telemetry"
+    },
+    {
+      "id": "incident-response",
+      "path": ".agents/skills/incident-response/SKILL.md",
+      "owner": "TRUST",
+      "description": "Safe device-security triage, evidence, containment and recovery"
+    },
+    {
+      "id": "accessibility-engineering",
+      "path": ".agents/skills/accessibility-engineering/SKILL.md",
+      "owner": "PRODUCT",
+      "description": "Compose semantics, TalkBack, focus, touch and inclusive diagnostics"
+    },
+    {
+      "id": "ai-engineering",
+      "path": ".agents/skills/ai-engineering/SKILL.md",
+      "owner": "PRODUCT",
+      "description": "Explainable battery/risk recommendations and on-device or opt-in model usage"
+    },
+    {
+      "id": "revenue-engineering",
+      "path": ".agents/skills/revenue-engineering/SKILL.md",
+      "owner": "GROWTH",
+      "description": "Play Billing, tier entitlements, pricing economics and release accuracy"
+    }
+  ],
+  "note": "Routing is advisory only; skills cannot grant tool, permission, billing or merge authority."
+}
