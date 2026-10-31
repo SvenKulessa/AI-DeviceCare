@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "AI_DEVICECARE_GOVERNANCE@1",
+  "authority": "AGENTS.md",
+  "externalReference": "SvenKulessa/Capital-AI AGENTS.md SOLO_MAINTAINER_FLOW@1 (adapted patterns, not inherited merge/deploy authority)",
+  "structure": {
+    "projectRoot": ".",
+    "gradleSettings": "settings.gradle.kts",
+    "appModules": {
+      "AI-DeviceCare": "apps/devicecare",
+      "AI-DeviceCare+": "apps/devicecare-plus"
+    },
+    "sharedModuleRoots": [
+      "core",
+      "features"
+    ],
+    "allowedTopLevelPaths": [
+      "AGENTS.md",
+      "README.md",
+      "docs",
+      ".agents",
+      ".github",
+      "governance",
+      "scripts",
+      "apps",
+      "core",
+      "features",
+      "gradle",
+      "build.gradle.kts",
+      "settings.gradle.kts",
+      "gradle.properties",
+      ".gitignore",
+      "gradlew",
+      "gradlew.bat",
+      "LICENSE"
+    ]
+  },
+  "phase": "P0_GOVERNANCE_ONLY",
+  "permissionPolicy": {
+    "stage": "M0",
+    "description": "Sensitive capabilities require scoped review, Play policy assessment and explicit opt-in; none is pre-approved by this JSON.",
+    "forbiddenManifestPermissionNames": [
+      "android.permission.QUERY_ALL_PACKAGES",
+      "android.permission.MANAGE_EXTERNAL_STORAGE",
+      "android.permission.PACKAGE_USAGE_STATS",
+      "android.permission.REQUEST_INSTALL_PACKAGES",
+      "android.permission.SYSTEM_ALERT_WINDOW",
+      "android.permission.BIND_ACCESSIBILITY_SERVICE",
+      "android.permission.BIND_VPN_SERVICE"
+    ]
+  },
+  "skillRegistry": ".agents/skills/registry.json",
+  "statusVocabulary": [
+    "VERIFIED",
+    "IN_PROGRESS",
+    "NOT_PROVEN",
+    "BLOCKED",
+    "REVIEW_REQUIRED"
+  ],
+  "notes": [
+    "Only root AGENTS.md sets repository authority.",
+    "Skill routing is advisory; no extra approvals or automatic access.",
+    "All Gradle modules stay under one repo and one settings.gradle.kts.",
+    "A future milestone may alter permissions only with an explicit scoped policy change and implementation evidence."
+  ]
+}
