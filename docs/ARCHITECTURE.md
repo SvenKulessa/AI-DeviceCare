@@ -11,6 +11,10 @@ Status: target design, **not yet implemented**. Source of truth for full require
 
 Monthly billing is an **unconfirmed assumption**. Business device/seat limits, taxes, cost of goods, licensing and Play subscription configuration require explicit decisions. Product names and two-store-listing policy must pass store review. AI-DeviceCare+ must offer material, differentiated value; do not ship a second near-identical consumer app.
 
+## Single repository and Gradle project folder
+
+The **existing repository root** is the only Android project directory (`AI-DeviceCare/`). Both app modules and all shared feature/core modules live beneath it and are declared in one root `settings.gradle.kts`. Never create a nested standalone `apps/*/settings.gradle.kts`, a separate repository for the second app, or a redundant `AI-DeviceCare/AI-DeviceCare/` folder. See [Governance-as-Code and Capital-AI skill provenance](GOVERNANCE-AS-CODE.md).
+
 ## Proposed Gradle module graph (not yet created)
 
 ```text
