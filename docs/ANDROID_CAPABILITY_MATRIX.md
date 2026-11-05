@@ -18,6 +18,16 @@
 | AI explanations | Local deterministic score + optional ML triage | cloud opt-in and data minimization | AI cannot authorize privileged changes or substantiate unverified malware verdicts | M1+ |
 | Diagnostic logs | Local structured app-own events + permitted telemetry | explicit remote export consent | No unrestricted system logcat, application secrets or third-party private data | M1 |
 
+## M1 implementation evidence — 2026-11-05
+
+A **limited consumer developer preview** now contains two on-demand collectors (see [M1-COLLECTORS.md](M1-COLLECTORS.md)):
+
+- `AndroidBatteryCollector`: sticky `ACTION_BATTERY_CHANGED` + `BatteryManager` capacity fallback; maps level, temperature, charging status and system-reported health, explicitly not chemical cell wear or per-app battery drain.
+- `AndroidPermissionCollector`: `PackageManager.GET_PERMISSIONS` for only OS-visible packages, at most 250 sampled; own-app permission grant counts; no raw installed-package names in UI/logs.
+- `DeviceObservationBatch@devicecare-observation/1`: explicit availability statuses and timestamped bounded observations, no implicit numeric malware/device-risk score.
+- Both collectors are invoked from a user-controlled button, off the Compose main thread. No `INTERNET`, `QUERY_ALL_PACKAGES`, `PACKAGE_USAGE_STATS`, `MANAGE_EXTERNAL_STORAGE`, VPN, AccessibilityService or background job.
+- **Not a Play or field-test PASS**: Android 15 physical-device API behavior, OEM compatibility, consent UX/accessibility, APK manifest inspection and battery overhead remain to be verified. No third-party app permission changes or security score exist.
+
 ## Restricted / special permissions approval checklist
 - **QUERY_ALL_PACKAGES:** only for a demonstrable core security/antivirus role, declaration and Play policy approval. Default to scoped package queries.
 - **MANAGE_EXTERNAL_STORAGE:** do not add for M0. Consider only when eligible core AV or file-management use and Play permission declaration/approval; cache-clear intent behavior/version support must be tested and user-authorized.
