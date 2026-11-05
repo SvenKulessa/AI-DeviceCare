@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 rootProject.name = "AI-DeviceCare"
 include(":apps:devicecare", ":apps:devicecare-plus")
 include(":core:evidence", ":core:quality", ":core:scoring", ":core:ui")
+include(":features:battery", ":features:permissions")
