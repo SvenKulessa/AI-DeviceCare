@@ -35,12 +35,28 @@ jobs:
           fi
           "$SDK_MANAGER" --install "platforms;android-36" "build-tools;36.0.0"
           gradle --version
-      - name: Independent pipeline unit tests
-        run: gradle --no-daemon :core:quality:testDebugUnitTest :core:scoring:testDebugUnitTest
+      - name: Independent pipeline unit tests and M1 negative fixtures
+        run: |
+          gradle --no-daemon \
+            :core:evidence:testDebugUnitTest \
+            :core:quality:testDebugUnitTest \
+            :core:scoring:testDebugUnitTest \
+            :features:battery:testDebugUnitTest \
+            :features:permissions:testDebugUnitTest
       - name: Build two isolated Android apps
         run: gradle --no-daemon :apps:devicecare:assembleDebug :apps:devicecare-plus:assembleDebug
-      - name: Android lint
-        run: gradle --no-daemon :apps:devicecare:lintDebug :apps:devicecare-plus:lintDebug
+      - name: Android lint (both apps and collectors)
+        run: |
+          gradle --no-daemon \
+            :apps:devicecare:lintDebug :apps:devicecare-plus:lintDebug \
+            :features:battery:lintDebug :features:permissions:lintDebug
+      - name: Explicit no-risky-permissions manifest check
+        run: |
+          node scripts/validate-governance.mjs
+          if grep -R -nE 'uses-permission.*(INTERNET|QUERY_ALL_PACKAGES|MANAGE_EXTERNAL_STORAGE|PACKAGE_USAGE_STATS|BIND_ACCESSIBILITY_SERVICE|BIND_VPN_SERVICE)' apps/*/src/main/AndroidManifest.xml; then
+            echo "::error::Unexpected network or privileged permission in M1 manifest"
+            exit 1
+          fi
       - name: Artifact provenance
         run: |
           sha256sum apps/devicecare/build/outputs/apk/debug/devicecare-debug.apk
@@ -49,7 +65,7 @@ jobs:
       - name: Publish internal-only debug artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ai-devicecare-p0-internal
+          name: ai-devicecare-m1-collectors-internal
           retention-days: 7
           if-no-files-found: error
           path: |
