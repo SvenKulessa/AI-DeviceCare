@@ -1,6 +1,6 @@
 # AI-DeviceCare
 
-**Status:** P0 foundation underway — not yet a working Android application.
+**Status:** P0 Android foundation was merged; M1 consumer **local collector preview** is under development and not publicly released.
 
 A privacy-first Android security and device-health platform, designed as two differentiated applications supported by one modular Kotlin/Jetpack Compose codebase.
 
@@ -35,12 +35,14 @@ A privacy-first Android security and device-health platform, designed as two dif
 - [Android capability and Play permission matrix](docs/ANDROID_CAPABILITY_MATRIX.md)
 - [Product master roadmap — GitHub Issue #1](https://github.com/SvenKulessa/AI-DeviceCare/issues/1)
 
+- [M1 BatteryManager + scoped permissions collectors and privacy rules](docs/M1-COLLECTORS.md)
+
 ## One project folder
 
 This repository root is the only Gradle project root. Both future apps are Android modules under `apps/`, supported by reusable `core/` and `features/` modules. The P0 policy validator guards against nested project settings and unreviewed high-risk manifest permissions. Run `node --test scripts/validate-governance.test.mjs` and `node scripts/validate-governance.mjs` (Node.js 20+).
 
 ## Contributing / development state
 
-For P0, work in feature branches and never bypass review gates. Build, tests, restricted Android permissions and Play distribution are **not yet configured**. The next step is to create an Android Gradle/Kotlin/Jetpack Compose skeleton for the consumer app plus future business app and shared modules; after that set up reproducible CI, app signing and automated tests.
+The P0 Gradle project, both internal Android apps and independent Core QA and scoring pipelines exist. Consumer M1 adds **on-demand** battery/visible-permission aggregate readings without sensitive manifest permissions. CI covers pure Kotlin negative fixtures, both app builds and Android lint. Physical Android QA, release signing, Play review, production scoring, VPN and billing are **not proven**.
 
-No production deployment, APK, AAB or accepted Play Store listing is currently claimed.
+Only internal debug APKs are built; no signed production APK/AAB or accepted Play Store listing is claimed.
