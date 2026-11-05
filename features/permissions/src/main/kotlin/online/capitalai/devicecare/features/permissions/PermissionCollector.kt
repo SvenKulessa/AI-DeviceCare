@@ -89,7 +89,7 @@ class AndroidPermissionCollector(
                 ownRequested == 0 -> 0
                 flags == null || flags.size < ownRequested -> null
                 else -> flags.take(ownRequested).count {
-                    it and PackageManager.REQUESTED_PERMISSION_GRANTED != 0
+                    it and PackageInfo.REQUESTED_PERMISSION_GRANTED != 0
                 }
             }
             PermissionEvidenceMapper.map(now, PermissionReading(
