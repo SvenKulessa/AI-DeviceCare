@@ -25,17 +25,17 @@ export function validateManifest(manifest, packageName, reportedPermissions = ''
   // guard non-exported dynamic receivers. It is NOT a user-granted permission.
   // All platform/dangerous/network/usage/VPN permissions remain forbidden.
   const marker = packageName + '.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION';
-  const nameOf = tag => tag.match(/android:name\\s*=\\s*["']([^"']+)["']/)?.[1] ?? null;
-  const exportedOf = tag => tag.match(/android:exported\\s*=\\s*["']([^"']+)["']/)?.[1] ?? null;
-  const permTags = [...manifest.matchAll(/<uses-permission(?:-sdk-[0-9]+)?\\b[^>]*>/g)].map(m => m[0]);
+  const nameOf = tag => tag.match(/android:name\s*=\s*["']([^"']+)["']/)?.[1] ?? null;
+  const exportedOf = tag => tag.match(/android:exported\s*=\s*["']([^"']+)["']/)?.[1] ?? null;
+  const permTags = [...manifest.matchAll(/<uses-permission(?:-sdk-[0-9]+)?\b[^>]*>/g)].map(m => m[0]);
   if (permTags.some(t => nameOf(t) !== marker)) errors.push('APK_HAS_PERMISSIONS');
-  const declared = [...manifest.matchAll(/<permission(?:-group|-tree)?\\b[^>]*>/g)].map(m => m[0]);
-  if (declared.some(t => !t.startsWith('<permission ') ||
+  const declared = [...manifest.matchAll(/<permission(?:-group|-tree)?\b[^>]*>/g)].map(m => m[0]);
+  if (declared.some(t => !/^<permission\\s/.test(t) ||
       nameOf(t) !== marker ||
-      !/android:protectionLevel\\s*=\\s*["']signature["']/.test(t)) ||
+      !/android:protectionLevel\s*=\s*["']signature["']/.test(t)) ||
       declared.filter(t => nameOf(t) === marker).length > 1)
     errors.push('APK_DECLARES_PERMISSION');
-  const packaged = reportedPermissions.trim().split(/\\r?\\n/).map(x => x.trim());
+  const packaged = reportedPermissions.trim().split(/\r?\n/).map(x => x.trim());
   for (const line of packaged) {
     if (line.startsWith('uses-permission:')) {
       if (line.match(/name=['"]([^'"]+)['"]/)?.[1] !== marker) errors.push('APK_HAS_PERMISSIONS');
@@ -43,33 +43,33 @@ export function validateManifest(manifest, packageName, reportedPermissions = ''
       if (line.slice('permission:'.length).trim() !== marker) errors.push('APK_DECLARES_PERMISSION');
     }
   }
-  const recv = [...manifest.matchAll(/<receiver\\b[^>]*>/g)].map(m => m[0]);
+  const recv = [...manifest.matchAll(/<receiver\b[^>]*>/g)].map(m => m[0]);
   if (recv.some(t =>
       nameOf(t) !== 'androidx.profileinstaller.ProfileInstallReceiver' ||
       exportedOf(t) !== 'true' ||
-      !/android:permission\\s*=\\s*["']android.permission.DUMP["']/.test(t)))
+      !/android:permission\s*=\s*["']android.permission.DUMP["']/.test(t)))
     errors.push('UNEXPECTED_RECEIVER');
-  const providers = [...manifest.matchAll(/<provider\\b[^>]*>/g)].map(m => m[0]);
+  const providers = [...manifest.matchAll(/<provider\b[^>]*>/g)].map(m => m[0]);
   if (providers.some(t =>
       nameOf(t) !== 'androidx.startup.InitializationProvider' ||
       exportedOf(t) !== 'false' ||
       !t.includes(packageName + '.androidx-startup')))
     errors.push('UNEXPECTED_PROVIDER');
   for (const type of ['service', 'activity-alias', 'instrumentation']) {
-    if (new RegExp('<' + type + '\\\\b').test(manifest))
+    if (new RegExp('<' + type + '\\b').test(manifest))
       errors.push('UNEXPECTED_' + type.toUpperCase().replace('-', '_'));
   }
-  const applications = [...manifest.matchAll(/<application\\b[^>]*>/g)];
+  const applications = [...manifest.matchAll(/<application\b[^>]*>/g)];
   if (applications.length !== 1) errors.push('APPLICATION_COUNT_INVALID');
   else {
-    if (!/android:allowBackup\\s*=\\s*["']false["']/.test(applications[0][0])) errors.push('BACKUP_MUST_BE_DISABLED');
-    if (/android:usesCleartextTraffic\\s*=\\s*["']true["']/.test(applications[0][0])) errors.push('CLEARTEXT_TRAFFIC_ALLOWED');
+    if (!/android:allowBackup\s*=\s*["']false["']/.test(applications[0][0])) errors.push('BACKUP_MUST_BE_DISABLED');
+    if (/android:usesCleartextTraffic\s*=\s*["']true["']/.test(applications[0][0])) errors.push('CLEARTEXT_TRAFFIC_ALLOWED');
   }
-  const activities = [...manifest.matchAll(/<activity\\b[^>]*>/g)];
+  const activities = [...manifest.matchAll(/<activity\b[^>]*>/g)];
   if (activities.length !== 1) errors.push('ACTIVITY_COUNT_INVALID');
   else {
     const tag = activities[0][0];
-    if (!/android:name\\s*=\\s*["'][^"']*MainActivity["']/.test(tag)) errors.push('LAUNCHER_ACTIVITY_INVALID');
+    if (!/android:name\s*=\s*["'][^"']*MainActivity["']/.test(tag)) errors.push('LAUNCHER_ACTIVITY_INVALID');
     if (exportedOf(tag) !== 'true') errors.push('LAUNCHER_EXPORT_REQUIRED');
   }
   if (!manifest.includes('android.intent.action.MAIN') || !manifest.includes('android.intent.category.LAUNCHER'))
