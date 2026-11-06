@@ -66,6 +66,10 @@ jobs:
             echo "::error::Unexpected network or privileged permission in M1 manifest"
             exit 1
           fi
+      - name: Negative fixtures for bundled APK permissions and exported components
+        run: node --test scripts/verify-apk-policy.test.mjs
+      - name: Inspect actual packaged APK manifests (apkanalyzer and aapt2)
+        run: node scripts/verify-apk-policy.mjs
       - name: Artifact provenance
         run: |
           sha256sum apps/devicecare/build/outputs/apk/debug/devicecare-debug.apk
@@ -80,3 +84,4 @@ jobs:
           path: |
             apps/devicecare/build/outputs/apk/debug/*.apk
             apps/devicecare-plus/build/outputs/apk/debug/*.apk
+            evidence/apk-manifest-policy.json
