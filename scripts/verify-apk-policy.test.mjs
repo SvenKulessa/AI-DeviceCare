@@ -49,3 +49,23 @@ test('reject unusable/incomplete output instead of passing', () => {
   assert.ok(validate(xml.replace('android.intent.action.MAIN','not.main'))
     .includes('LAUNCHER_INTENT_MISSING'));
 });
+
+test('accept only the AndroidX package-private signature permission and audited components', () => {
+  const appId = 'online.capitalai.devicecare';
+  const marker = appId + '.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION';
+  const safe = xml
+    .replace('<application',
+      '<permission android:name="' + marker + '" android:protectionLevel="signature"/>\\n' +
+      '<uses-permission android:name="' + marker + '"/>\\n<application')
+    .replace('</application>',
+      '<receiver android:name="androidx.profileinstaller.ProfileInstallReceiver" ' +
+      'android:exported="true" android:permission="android.permission.DUMP"/>\\n' +
+      '<provider android:name="androidx.startup.InitializationProvider" ' +
+      'android:exported="false" android:authorities="' + appId + '.androidx-startup"/>\\n' +
+      '</application>');
+  const aapt = "package: " + appId + "\\npermission: " + marker +
+    "\\nuses-permission: name='" + marker + "'";
+  assert.deepEqual(validate(safe, aapt), []);
+  const unsafe = safe.replace('android:exported="false" android:authorities=', 'android:exported="true" android:authorities=');
+  assert.ok(validate(unsafe, aapt).includes('UNEXPECTED_PROVIDER'));
+});
