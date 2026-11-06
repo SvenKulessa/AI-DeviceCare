@@ -32,7 +32,7 @@ export function validateManifest(manifest, packageName, reportedPermissions = ''
   const declared = [...manifest.matchAll(/<permission(?:-group|-tree)?\b[^>]*>/g)].map(m => m[0]);
   if (declared.some(t => !/^<permission\s/.test(t) ||
       nameOf(t) !== marker ||
-      !/android:protectionLevel\s*=\s*["']signature["']/.test(t)) ||
+      !/android:protectionLevel\s*=\s*["'](?:signature|0x0*2)["']/.test(t)) ||
       declared.filter(t => nameOf(t) === marker).length > 1)
     errors.push('APK_DECLARES_PERMISSION');
   const packaged = reportedPermissions.trim().split(/\r?\n/).map(x => x.trim());
