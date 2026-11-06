@@ -51,7 +51,10 @@ Privacy classification: device battery state = local device diagnostic data; pac
 - `:features:permissions:testDebugUnitTest`: filtered scope, truncated sampling, missing flags, invalid aggregates, denied access.
 - Existing `:core:quality:testDebugUnitTest` and `:core:scoring:testDebugUnitTest` remain independent regression suites.
 - Consumer + Business debug assemble, both lint tasks, collector lint tasks and no-risky-manifest check in `.github/workflows/android-p0.yml`.
-- **Unit tests cover pure mappers, NOT live Android services**. Real Android instrumented tests and OEM reports remain separately required for M1.
+- **Unit tests cover pure mappers, NOT live Android services**. Android 15 API-35 emulator Compose instrumentation now exercises the explicit button and on-demand flow (CI status must be verified separately). OEM and real battery-energy reports remain separate M1 release blockers.
+- Built APK manifest policy now uses Android SDK `apkanalyzer` and `aapt2`, not only source manifest grep. It rejects any merged permission, unexpected service/receiver/provider/activity alias, enabled backup or cleartext, extra launch activities, mismatched IDs and old target SDK. Review `evidence/apk-manifest-policy.json` and CI result for exact-head confirmation.
+- Evidence strings are allowlisted by signal ID, value type/unit, bounds, 60-second expiry and collector scope. Regressions attempting to include package IDs, arbitrary device identifiers or longer TTL are negative tested.
+- Consumer UI exposes elapsed monotonic scan time and process CPU time **informationally only**; neither measures battery power or proves optimization.
 
 ### Local reproduction (JDK 17, Android SDK platform 36, Gradle 9.6.0)
 ```sh
@@ -62,12 +65,14 @@ gradle --no-daemon :apps:devicecare:assembleDebug :apps:devicecare-plus:assemble
 ```
 
 ## Known required follow-ups
-- Android emulator / physical Android 15 test with normal and missing signals; TalkBack and rotation/screen resize test.
-- Additional test that actual release APK manifest has no privileged permissions or network, not only source-manifest regex.
+- Android 15 emulator CI now covers basic Compose semantics and explicit scan start; physical Android 15/OEM still needed for sensors, TalkBack, rotation, process death and layout at large text sizes.
+- Actual packaged **debug APK** manifest is now inspected automatically. Release AAB/signed artifact must be independently verified in a later release work package.
 - True per-app permission auditing requires Play-eligible package visibility and user/privacy justification; do not silently broaden.
 - Battery optimizations are currently **guidance-only**, not executed system modifications.
 - Backend, Supabase, Stripe, user accounts, AI malware engine and VPN are deliberately out of this package.
 - No claim of public Store readiness; separate Play Billing and commercial/privacy review required.
+
+- [Detailed QA/remaining manual test ledger](M1-ANDROID15-QA.md) tracks each gate, evidence and issue #5.
 
 ## References
 - https://developer.android.com/reference/android/os/BatteryManager
