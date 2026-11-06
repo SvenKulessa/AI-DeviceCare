@@ -66,6 +66,10 @@ test('accept only the AndroidX package-private signature permission and audited 
   const aapt = "package: " + appId + "\\npermission: " + marker +
     "\\nuses-permission: name='" + marker + "'";
   assert.deepEqual(validate(safe, aapt), []);
+  // Android's compiled binary XML renders signature (protection bit 2) numerically.
+  assert.deepEqual(validate(safe.replace('android:protectionLevel="signature"', 'android:protectionLevel="0x00000002"'), aapt), []);
+  assert.ok(validate(safe.replace('android:protectionLevel="signature"', 'android:protectionLevel="0x00000000"'), aapt).includes('APK_DECLARES_PERMISSION'));
+
   const unsafe = safe.replace('android:exported="false" android:authorities=', 'android:exported="true" android:authorities=');
   assert.ok(validate(unsafe, aapt).includes('UNEXPECTED_PROVIDER'));
 });
