@@ -1,0 +1,39 @@
+name: Editorial source-bound drafts (no publication)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+permissions:
+  contents: read
+jobs:
+  verify-draft-contract:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Validate editorial draft-only contract and negative fixtures
+        run: node --test scripts/growth/editorial-candidate.test.mjs
+  collect-verified-merge-event:
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout merged and reviewed source
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: \${{ github.event.pull_request.merge_commit_sha }}
+          persist-credentials: false
+      - name: Check source contract and negative cases
+        run: node --test scripts/growth/editorial-candidate.test.mjs
+      - name: Build local-only editorial drafts from authenticated merge event
+        run: node scripts/growth/editorial-candidate.mjs
+      - name: Upload review artifacts (not published content)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: devicecare-editorial-draft-\${{ github.event.pull_request.number }}
+          retention-days: 7
+          if-no-files-found: error
+          path: artifacts/editorial-drafts/
