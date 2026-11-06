@@ -14,7 +14,7 @@
 | Battery mapper | `:features:battery:testDebugUnitTest` | missing/invalid level/status and temperature not treated as healthy | accuracy of OEM battery sensors |
 | Permissions mapper | `:features:permissions:testDebugUnitTest` | visible-only scope, 250-sample flag, unknown permissions | coverage of full device inventory |
 | Independent scoring vs quality | `:core:quality:testDebugUnitTest :core:scoring:testDebugUnitTest` | QA cannot assign device risk; no calibrated real score; unverified = `NOT_ASSESSABLE` | actual malware or device risk |
-| Packaged APK manifest | `node --test scripts/verify-apk-policy.test.mjs && node scripts/verify-apk-policy.mjs` after both APK builds | `apkanalyzer` reads binary XML, `aapt2` reads packaged effective permission list; compare both application IDs, demand 0 permissions, no services/providers/receivers, one launcher, backup=false and targetSdk>=35; SHA-256 bound to commit | actual Play AAB output or dynamic runtime monitoring |
+| Packaged APK manifest | `node --test scripts/verify-apk-policy.test.mjs && node scripts/verify-apk-policy.mjs` after both APK builds | `apkanalyzer` reads binary XML, `aapt2` reads packaged effective permission list; compare both application IDs, forbid all Android platform/dangerous/network permissions and unexpected components; permit only audited AndroidX package-local signature permission, nonexported Startup provider and DUMP-guarded ProfileInstaller receiver; require one launcher, backup=false and targetSdk>=35; SHA-256 bound to commit | actual Play AAB output or dynamic runtime monitoring |
 | Accessibility / UI | Android 15 API 35 emulator `:apps:devicecare:connectedDebugAndroidTest` | Compose semantics, button accessible, no scan on opening, explicit tap starts scan and no invented risk score | real TalkBack, OEM layout, font scale and motor/vision user testing |
 | Passive CPU/runtime overhead | On click, UI shows monotonic elapsed ms and process CPU ms measured across both collectors (no persistence) | a reproducible informational per-session sample | power draw, mAh, thermal effect or battery lifetime. Never extrapolate CPU time into energy cost |
 | Android standard CI | `.github/workflows/android-p0.yml` | security/license/secret scans, both apps built and linted; package policy, artifact hashes | production signing, release compliance, actual OEM sensor readings |
@@ -88,6 +88,8 @@ gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
 ```
 
 GitHub workflows: `.github/workflows/android-p0.yml` and `.github/workflows/android15-emulator-qa.yml`.
+Real packaged APK evidence may contain a benign AndroidX-generated `<permission protectionLevel="signature">` and a matching `<uses-permission>` in the **same applicationId namespace**, plus a non-exported AndroidX Startup provider and system-DUMP-guarded ProfileInstaller receiver. These are not user runtime permissions. If the generated manifest differs, the CI gate fails instead of accepting a wildcard permission. No INTERNET or QUERY_ALL_PACKAGES permission is admitted.
+
 The action is pinned to `reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a` (v2.37.0). No external paid service, new Supabase/Stripe resource, automatic Play release or elevated Android permission is introduced.
 
 ## Primary technical references
