@@ -1,6 +1,8 @@
 package online.capitalai.devicecare
 
 import android.os.Bundle
+import android.os.Process
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
@@ -34,13 +36,19 @@ class MainActivity : ComponentActivity() {
                     if (!busy) {
                         busy = true
                         scope.launch {
+                            val startElapsed = SystemClock.elapsedRealtime()
+                            val startCpu = Process.getElapsedCpuTime()
                             try {
                                 val result = withContext(Dispatchers.IO) {
                                     val battery = AndroidBatteryCollector(applicationContext).collect()
                                     val permissions = AndroidPermissionCollector(applicationContext).collect()
                                     battery to permissions
                                 }
-                                lines = showBatch(result.first) + showBatch(result.second)
+                                val elapsedMs = (SystemClock.elapsedRealtime() - startElapsed).coerceAtLeast(0)
+                                val cpuMs = (Process.getElapsedCpuTime() - startCpu).coerceAtLeast(0)
+                                lines = showBatch(result.first) + showBatch(result.second) + listOf(
+                                    "Messaufwand: ${elapsedMs} ms Laufzeit; ${cpuMs} ms Prozess-CPU (nur informativ, keine Akkuenergie-Messung)."
+                                )
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (_: RuntimeException) {
