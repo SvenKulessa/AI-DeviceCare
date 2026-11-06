@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -22,7 +23,7 @@ class M1InspectionAccessibilityTest {
 
     @Test fun hasExplicitAccessibleScanButtonAndNoAutomaticInspection() {
         rule.onNodeWithTag("inspection_start_button")
-            .assertExists().assertIsDisplayed().assertIsEnabled().assertHasClickAction()
+            .performScrollTo().assertExists().assertIsDisplayed().assertIsEnabled().assertHasClickAction()
         rule.onNodeWithText("Risk score: NOT_ASSESSABLE", substring = true).assertExists()
         rule.onNodeWithText("Keine Speicherung, kein Upload", substring = true).assertExists()
         rule.onNodeWithText("Momentaufnahme;", substring = true).assertExists()
@@ -31,7 +32,7 @@ class M1InspectionAccessibilityTest {
     }
 
     @Test fun userClickMakesOnlyScopedLocalObservationsVisible() {
-        rule.onNodeWithTag("inspection_start_button").performClick()
+        rule.onNodeWithTag("inspection_start_button").performScrollTo().performClick()
         rule.waitUntil(timeoutMillis = 20_000) {
             rule.onAllNodesWithText("Quelle:", substring = true)
                 .fetchSemanticsNodes().isNotEmpty() ||
