@@ -47,7 +47,12 @@ jobs:
           script: >-
             adb -e shell settings put system font_scale 2.0 &&
             gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
-            -Pandroid.testInstrumentationRunnerArguments.expectedFontScale=2.0
+            -Pandroid.testInstrumentationRunnerArguments.expectedFontScale=2.0 &&
+            mkdir -p apps/devicecare/build/reports/process-qa &&
+            python3 scripts/verify-emulator-process-restart.py
+            apps/devicecare/build/outputs/apk/debug/devicecare-debug.apk
+            > apps/devicecare/build/reports/process-qa/process-restart.json &&
+            cat apps/devicecare/build/reports/process-qa/process-restart.json
       - name: Capture redacted instrumentation results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -58,3 +63,4 @@ jobs:
           path: |
             apps/devicecare/build/outputs/androidTest-results/connected/**/*.xml
             apps/devicecare/build/reports/androidTests/connected/**
+            apps/devicecare/build/reports/process-qa/process-restart.json
