@@ -12,6 +12,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import online.capitalai.devicecare.features.permissions.AndroidPermissionCollector
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -31,6 +33,7 @@ class M1InspectionAccessibilityTest {
         rule.onNodeWithText("Momentaufnahme;", substring = true).assertExists()
         assertTrue(rule.onAllNodesWithText("Quelle:", substring = true)
             .fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithText("Prüfumfang (Android API", substring = true).assertDoesNotExist()
     }
 
     @Test fun scrollContentStaysOutsideSystemBars() {
@@ -56,15 +59,23 @@ class M1InspectionAccessibilityTest {
         rule.onNodeWithText("Cloud, analytics, VPN", substring = true).performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun reducedCollectorCapsPermissionMetadataSampling() {
+        val batch = AndroidPermissionCollector(rule.activity.applicationContext).collect(sampleLimit = 1)
+        val values = batch.observations.associate { it.id to it.value }
+        assertEquals("1", values["sampled_packages"])
+        val visible = checkNotNull(values["visible_packages"]).toInt()
+        assertTrue("At least the app itself should be visible", visible >= 1)
+        assertEquals((visible > 1).toString(), values["sample_truncated"])
+    }
+
     @Test fun userClickMakesOnlyScopedLocalObservationsVisible() {
         rule.onNodeWithTag("inspection_start_button").performScrollTo().performClick()
         rule.waitUntil(timeoutMillis = 20_000) {
             rule.onAllNodesWithText("Quelle:", substring = true)
-                .fetchSemanticsNodes().isNotEmpty() ||
-            rule.onAllNodesWithText("Lokale Prüfung nicht verfügbar", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Risk score: NOT_ASSESSABLE", substring = true).assertExists()
+        rule.onNodeWithText("Prüfumfang (Android API", substring = true).performScrollTo().assertIsDisplayed()
         // The test does not infer mobile-device energy consumption or malware status.
     }
 }
