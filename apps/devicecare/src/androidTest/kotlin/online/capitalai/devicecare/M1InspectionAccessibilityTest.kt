@@ -34,6 +34,7 @@ class M1InspectionAccessibilityTest {
         assertTrue(rule.onAllNodesWithText("Quelle:", substring = true)
             .fetchSemanticsNodes().isEmpty())
         rule.onNodeWithText("Geräteprofil").assertDoesNotExist()
+        rule.onNodeWithText("Energiesparmodus öffnen").assertDoesNotExist()
     }
 
     @Test fun scrollContentStaysOutsideSystemBars() {
@@ -78,6 +79,9 @@ class M1InspectionAccessibilityTest {
         rule.onNodeWithText("Prüfumfang (Android API", substring = true).performScrollTo().assertIsDisplayed()
         for (label in listOf("Geräteprofil", "Thermische Belastung:", "Akkutemperatur:", "App-Berechtigungen:")) {
             rule.onNodeWithText(label, substring = true).performScrollTo().assertIsDisplayed()
+        }
+        for (label in listOf("Energiesparmodus öffnen", "App-Info von AI-DeviceCare öffnen")) {
+            rule.onNodeWithText(label).performScrollTo().assertIsDisplayed().assertHasClickAction()
         }
         // The test does not infer mobile-device energy consumption or malware status.
     }

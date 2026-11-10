@@ -1,9 +1,11 @@
 package online.capitalai.devicecare
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Process
 import android.os.SystemClock
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -32,6 +34,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var busy by remember { mutableStateOf(false) }
             var inspection by remember { mutableStateOf(InspectionDisplay()) }
+            var settingsMessage by remember { mutableStateOf<String?>(null) }
             val scope = rememberCoroutineScope()
             DeviceCareHome(
                 appName = "AI-DeviceCare",
@@ -39,9 +42,23 @@ class MainActivity : ComponentActivity() {
                 inspectionInProgress = busy,
                 inspectionLines = inspection.resultLines,
                 inspectionProfileLines = inspection.profileLines,
+                settingsMessage = settingsMessage,
+                onOpenBatterySettings = {
+                    settingsMessage = openSettings(
+                        Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS),
+                        "Suche in den Einstellungen nach Energiesparmodus.",
+                    )
+                },
+                onOpenAppSettings = {
+                    settingsMessage = openSettings(
+                        ownAppSettings(packageName),
+                        "Öffne in den Einstellungen Apps → AI-DeviceCare.",
+                    )
+                },
                 onInspect = {
                     if (!busy) {
                         busy = true
+                        settingsMessage = null
                         scope.launch {
                             val startElapsed = SystemClock.elapsedRealtime()
                             val startCpu = Process.getElapsedCpuTime()
@@ -72,4 +89,11 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+
+    private fun openSettings(intent: Intent, fallbackHint: String): String? =
+        when (openDeviceSettings(intent) { startActivity(it) }) {
+            SettingsLaunchResult.DIRECT -> null
+            SettingsLaunchResult.GENERAL_SETTINGS -> "Die Zielseite ist nicht verfügbar. $fallbackHint"
+            SettingsLaunchResult.UNAVAILABLE -> "Android-Einstellungen konnten nicht geöffnet werden. $fallbackHint"
+        }
 }

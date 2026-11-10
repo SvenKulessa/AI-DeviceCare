@@ -35,6 +35,9 @@ fun DeviceCareHome(
     inspectionInProgress: Boolean = false,
     inspectionLines: List<String> = emptyList(),
     inspectionProfileLines: List<String> = emptyList(),
+    settingsMessage: String? = null,
+    onOpenBatterySettings: (() -> Unit)? = null,
+    onOpenAppSettings: (() -> Unit)? = null,
 ) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
@@ -80,6 +83,23 @@ fun DeviceCareHome(
                             Spacer(Modifier.height(12.dp))
                         }
                         inspectionLines.forEach { line -> Text(line, style = MaterialTheme.typography.bodyMedium) }
+                    }
+                    if (inspectionProfileLines.isNotEmpty() && onOpenBatterySettings != null && onOpenAppSettings != null) {
+                        Text(
+                            "Android-Einstellungen prüfen",
+                            modifier = Modifier.semantics { heading() },
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text("Öffnet Android-Einstellungen. Änderungen nimmst du dort selbst vor.")
+                        Button(onClick = onOpenBatterySettings, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text("Energiesparmodus öffnen")
+                        }
+                        Button(onClick = onOpenAppSettings, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text("App-Info von AI-DeviceCare öffnen")
+                        }
+                        if (settingsMessage != null) {
+                            Text(settingsMessage, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                        }
                     }
                 } else if (enterprise) {
                     Text("Fleet enrollment and organization features: NOT IMPLEMENTED.")

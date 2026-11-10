@@ -42,6 +42,8 @@ For reduced budgets, the app asks Android for the visible set without permission
 
 No new permissions, identifiers, persistence, background work or network access. Raw package names are only used transiently to request Android metadata and are excluded from display and logs. The profile is reread on every manual scan. Real-device and OEM resource behavior remain unverified for this slice.
 
+After a manual scan, the Consumer preview can open Android's battery-saver screen or its own App info using public Settings intents. A missing or restricted direct screen falls back to general Settings with a navigation hint. If general Settings is also unavailable, the app displays a manual hint. This does not change settings or request additional permissions.
+
 ## Restricted / special permissions approval checklist
 - **QUERY_ALL_PACKAGES:** only for a demonstrable core security/antivirus role, declaration and Play policy approval. Default to scoped package queries.
 - **MANAGE_EXTERNAL_STORAGE:** do not add for M0. Consider only when eligible core AV or file-management use and Play permission declaration/approval; cache-clear intent behavior/version support must be tested and user-authorized.
