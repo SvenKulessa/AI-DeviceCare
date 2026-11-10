@@ -33,7 +33,7 @@ class M1InspectionAccessibilityTest {
         rule.onNodeWithText("Momentaufnahme;", substring = true).assertExists()
         assertTrue(rule.onAllNodesWithText("Quelle:", substring = true)
             .fetchSemanticsNodes().isEmpty())
-        rule.onNodeWithText("Prüfumfang (Android API", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Geräteprofil").assertDoesNotExist()
     }
 
     @Test fun scrollContentStaysOutsideSystemBars() {
@@ -76,6 +76,9 @@ class M1InspectionAccessibilityTest {
         }
         rule.onNodeWithText("Risk score: NOT_ASSESSABLE", substring = true).assertExists()
         rule.onNodeWithText("Prüfumfang (Android API", substring = true).performScrollTo().assertIsDisplayed()
+        for (label in listOf("Geräteprofil", "Thermische Belastung:", "Akkutemperatur:", "App-Berechtigungen:")) {
+            rule.onNodeWithText(label, substring = true).performScrollTo().assertIsDisplayed()
+        }
         // The test does not infer mobile-device energy consumption or malware status.
     }
 }

@@ -17,14 +17,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import online.capitalai.devicecare.core.evidence.DeviceObservationBatch
-import online.capitalai.devicecare.core.evidence.ObservationStatus
 import online.capitalai.devicecare.core.ui.DeviceCareHome
 import online.capitalai.devicecare.features.battery.AndroidBatteryCollector
 import online.capitalai.devicecare.features.permissions.AndroidPermissionCollector
 import online.capitalai.devicecare.features.permissions.AndroidPermissionScanProfile
 import online.capitalai.devicecare.features.permissions.PermissionScanBudget
-import online.capitalai.devicecare.features.permissions.PermissionScanReason
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,13 +31,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = lightBars, navigationBarStyle = lightBars)
         setContent {
             var busy by remember { mutableStateOf(false) }
-            var lines by remember { mutableStateOf(emptyList<String>()) }
+            var inspection by remember { mutableStateOf(InspectionDisplay()) }
             val scope = rememberCoroutineScope()
             DeviceCareHome(
                 appName = "AI-DeviceCare",
                 enterprise = false,
                 inspectionInProgress = busy,
-                inspectionLines = lines,
+                inspectionLines = inspection.resultLines,
+                inspectionProfileLines = inspection.profileLines,
                 onInspect = {
                     if (!busy) {
                         busy = true
@@ -53,17 +51,18 @@ class MainActivity : ComponentActivity() {
                                     val budget = PermissionScanBudget.forProfile(profile)
                                     val battery = AndroidBatteryCollector(applicationContext).collect()
                                     val permissions = AndroidPermissionCollector(applicationContext).collect(budget.packageLimit)
-                                    listOf(budget.describe(profile.apiLevel)) + showBatch(battery) + showBatch(permissions)
+                                    presentInspection(profile, budget, battery, permissions)
                                 }
                                 val elapsedMs = (SystemClock.elapsedRealtime() - startElapsed).coerceAtLeast(0)
                                 val cpuMs = (Process.getElapsedCpuTime() - startCpu).coerceAtLeast(0)
-                                lines = result + listOf(
-                                    "Messaufwand: ${elapsedMs} ms Laufzeit; ${cpuMs} ms Prozess-CPU (nur informativ, keine Akkuenergie-Messung)."
-                                )
+                                inspection = result.copy(resultLines = result.resultLines +
+                                    "Messaufwand: ${elapsedMs} ms Laufzeit; ${cpuMs} ms Prozess-CPU (nur informativ, keine Akkuenergie-Messung).")
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (_: RuntimeException) {
-                                lines = listOf("Lokale Prüfung nicht verfügbar. Keine Daten gespeichert.")
+                                inspection = InspectionDisplay(
+                                    resultLines = listOf("Lokale Prüfung nicht verfügbar. Keine Daten gespeichert."),
+                                )
                             } finally {
                                 busy = false
                             }
@@ -73,28 +72,4 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
-}
-
-/** Never display/record raw installed-package names, identifiers or exceptions. */
-private fun showBatch(batch: DeviceObservationBatch): List<String> =
-    listOf("Quelle: ${batch.collectorId} · ${batch.scope} · ${batch.contractVersion}") +
-        batch.observations.map { observation ->
-            val display = if (observation.status == ObservationStatus.OBSERVED)
-                "${observation.value}${observation.unit?.let { " $it" } ?: ""}"
-            else "${observation.status} (${observation.limitationCode})"
-            "${observation.id}: $display"
-        }
-
-private fun PermissionScanBudget.describe(apiLevel: Int): String {
-    val reason = if (reasons.isEmpty()) "Standardumfang" else reasons.joinToString(", ") {
-        when (it) {
-            PermissionScanReason.MEMORY_PRESSURE -> "Speicherdruck"
-            PermissionScanReason.THERMAL_PRESSURE -> "hohe thermische Belastung"
-            PermissionScanReason.LOW_RAM -> "Gerät mit wenig RAM"
-            PermissionScanReason.POWER_SAVER -> "Energiesparmodus"
-            PermissionScanReason.MODERATE_THERMAL -> "thermische Belastung"
-            PermissionScanReason.SIGNAL_UNAVAILABLE -> "Ressourcensignale teilweise nicht verfügbar"
-        }
-    }
-    return "Prüfumfang (Android API $apiLevel): bis zu $packageLimit sichtbare Apps · $reason."
 }

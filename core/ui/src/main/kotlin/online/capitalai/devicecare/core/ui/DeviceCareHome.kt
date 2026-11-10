@@ -34,6 +34,7 @@ fun DeviceCareHome(
     onInspect: (() -> Unit)? = null,
     inspectionInProgress: Boolean = false,
     inspectionLines: List<String> = emptyList(),
+    inspectionProfileLines: List<String> = emptyList(),
 ) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
@@ -65,6 +66,19 @@ fun DeviceCareHome(
                     Text("Keine Speicherung, kein Upload, kein Hintergrundscan und keine Spezialberechtigungen.")
                     Text("Momentaufnahme; Messwerte können nach 60 Sekunden veraltet sein.")
                     Column(modifier = Modifier.testTag("inspection_results").semantics { liveRegion = LiveRegionMode.Polite }) {
+                        if (inspectionProfileLines.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    "Geräteprofil",
+                                    modifier = Modifier.semantics { heading() },
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                inspectionProfileLines.forEach { line ->
+                                    Text(line, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                        }
                         inspectionLines.forEach { line -> Text(line, style = MaterialTheme.typography.bodyMedium) }
                     }
                 } else if (enterprise) {
