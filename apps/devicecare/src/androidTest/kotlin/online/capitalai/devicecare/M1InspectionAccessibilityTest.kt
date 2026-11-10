@@ -1,5 +1,7 @@
 package online.capitalai.devicecare
 
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertHasClickAction
@@ -32,10 +34,7 @@ class M1InspectionAccessibilityTest {
         rule.onNodeWithText("Risk score: NOT_ASSESSABLE", substring = true).assertExists()
         rule.onNodeWithText("Keine Speicherung, kein Upload", substring = true).assertExists()
         rule.onNodeWithText("Momentaufnahme;", substring = true).assertExists()
-        assertTrue(rule.onAllNodesWithText("Quelle:", substring = true)
-            .fetchSemanticsNodes().isEmpty())
-        rule.onNodeWithText("Geräteprofil").assertDoesNotExist()
-        rule.onNodeWithText("Energiesparmodus öffnen").assertDoesNotExist()
+        assertNoInspectionResults()
     }
 
     @Test fun scrollContentStaysOutsideSystemBars() {
@@ -80,11 +79,7 @@ class M1InspectionAccessibilityTest {
                 0f,
             )
         }
-        rule.onNodeWithTag("inspection_start_button").performScrollTo().performClick()
-        rule.waitUntil(timeoutMillis = 20_000) {
-            rule.onAllNodesWithText("Quelle:", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
+        runManualInspection()
         rule.onNodeWithText("Risk score: NOT_ASSESSABLE", substring = true).assertExists()
         rule.onNodeWithText("Prüfumfang (Android API", substring = true).performScrollTo().assertIsDisplayed()
         for (label in listOf("Geräteprofil", "Thermische Belastung:", "Akkutemperatur:", "App-Berechtigungen:")) {
@@ -94,5 +89,45 @@ class M1InspectionAccessibilityTest {
             rule.onNodeWithText(label).performScrollTo().assertIsDisplayed().assertHasClickAction()
         }
         // The test does not infer mobile-device energy consumption or malware status.
+    }
+
+    @Test fun rotationAndActivityRecreationRequireAnotherManualScan() {
+        val scenario = rule.activityRule.scenario
+        scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        }
+        runManualInspection()
+        rule.onNodeWithText("Geräteprofil").performScrollTo().assertIsDisplayed()
+
+        scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        }
+        assertNoInspectionResults()
+
+        runManualInspection()
+        rule.onNodeWithText("Geräteprofil").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("App-Info von AI-DeviceCare öffnen")
+            .performScrollTo().assertIsDisplayed().assertHasClickAction()
+
+        scenario.recreate()
+        assertNoInspectionResults()
+        rule.onNodeWithTag("inspection_start_button")
+            .performScrollTo().assertIsDisplayed().assertIsEnabled().assertHasClickAction()
+    }
+
+    private fun assertNoInspectionResults() {
+        rule.onNodeWithText("Quelle:", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Geräteprofil").assertDoesNotExist()
+        rule.onNodeWithText("Energiesparmodus öffnen").assertDoesNotExist()
+    }
+
+    private fun runManualInspection() {
+        rule.onNodeWithTag("inspection_start_button").performScrollTo().performClick()
+        rule.waitUntil(timeoutMillis = 20_000) {
+            rule.onAllNodesWithText("Quelle:", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
     }
 }
