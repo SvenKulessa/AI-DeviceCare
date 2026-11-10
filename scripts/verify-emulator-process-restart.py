@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 from xml.etree import ElementTree
 
 PACKAGE = "online.capitalai.devicecare"
@@ -27,8 +28,6 @@ def view():
     adb("shell", "uiautomator", "dump", DUMP)
     root = ElementTree.fromstring(adb("exec-out", "cat", DUMP).stdout)
     nodes = [node for node in root.iter("node") if node.get("package") == PACKAGE]
-    if not nodes:
-        raise RuntimeError("Consumer activity is not in the foreground")
     return nodes
 
 
@@ -39,6 +38,9 @@ def bounds(node):
 def find_text(label, *, expect_no_results=False):
     for _ in range(12):
         nodes = view()
+        if not nodes:
+            time.sleep(0.5)
+            continue
         if expect_no_results and any(
             node.get("text", "") == PROFILE or "Quelle:" in node.get("text", "")
             for node in nodes
