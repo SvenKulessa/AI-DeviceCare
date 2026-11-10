@@ -36,7 +36,7 @@ jobs:
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-36" "build-tools;36.0.0"
       - name: Compile Compose instrumentation tests
         run: gradle --no-daemon :apps:devicecare:assembleDebugAndroidTest
-      - name: Run on Android 15 emulator (API 35)
+      - name: Run on Android 15 emulator (API 35, 200% font scale)
         uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         with:
           api-level: 35
@@ -44,7 +44,10 @@ jobs:
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+          script: >-
+            adb -e shell settings put system font_scale 2.0 &&
+            gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+            -Pandroid.testInstrumentationRunnerArguments.expectedFontScale=2.0
       - name: Capture redacted instrumentation results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -12,6 +12,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.test.platform.app.InstrumentationRegistry
 import online.capitalai.devicecare.features.permissions.AndroidPermissionCollector
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -70,6 +71,15 @@ class M1InspectionAccessibilityTest {
     }
 
     @Test fun userClickMakesOnlyScopedLocalObservationsVisible() {
+        // Verify the running Activity picked up the emulator's requested setting.
+        InstrumentationRegistry.getArguments().getString("expectedFontScale")?.let { expected ->
+            assertEquals(
+                "Requested font scale must be active before checking scan results",
+                expected.toFloat(),
+                rule.activity.resources.configuration.fontScale,
+                0f,
+            )
+        }
         rule.onNodeWithTag("inspection_start_button").performScrollTo().performClick()
         rule.waitUntil(timeoutMillis = 20_000) {
             rule.onAllNodesWithText("Quelle:", substring = true)
