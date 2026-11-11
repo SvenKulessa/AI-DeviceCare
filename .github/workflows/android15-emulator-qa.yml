@@ -33,6 +33,13 @@ jobs:
               gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
               -Pandroid.testInstrumentationRunnerArguments.expectedApi=32
               -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#reducedCollectorCapsPermissionMetadataSampling
+          - api: 26
+            name: android8-minimum-sdk-inspection
+            artifact: devicecare-api26-inspection-results
+            script: >-
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedApi=26
+              -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#userClickMakesOnlyScopedLocalObservationsVisible
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

@@ -26,7 +26,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Android 15 emulator smoke tests, not OEM accuracy, device power or TalkBack
+ * Android emulator smoke tests, not OEM accuracy, device power or TalkBack
  * certification. The only execution path into collectors is the user's click.
  */
 class M1InspectionAccessibilityTest {
@@ -65,9 +65,7 @@ class M1InspectionAccessibilityTest {
     }
 
     @Test fun reducedCollectorCapsPermissionMetadataSampling() {
-        InstrumentationRegistry.getArguments().getString("expectedApi")?.let { expected ->
-            assertEquals("Expected Android API level", expected.toInt(), Build.VERSION.SDK_INT)
-        }
+        assertExpectedApi()
         val batch = AndroidPermissionCollector(rule.activity.applicationContext).collect(sampleLimit = 1)
         val values = batch.observations.associate { it.id to it.value }
         assertEquals("1", values["sampled_packages"])
@@ -91,6 +89,7 @@ class M1InspectionAccessibilityTest {
     }
 
     @Test fun userClickMakesOnlyScopedLocalObservationsVisible() {
+        assertExpectedApi()
         // Verify the running Activity picked up the emulator's requested setting.
         InstrumentationRegistry.getArguments().getString("expectedFontScale")?.let { expected ->
             assertEquals(
@@ -105,6 +104,11 @@ class M1InspectionAccessibilityTest {
         rule.onNodeWithText("Prüfumfang (Android API", substring = true).performScrollTo().assertIsDisplayed()
         for (label in listOf("Geräteprofil", "Thermische Belastung:", "Akkutemperatur:", "App-Berechtigungen:")) {
             rule.onNodeWithText(label, substring = true).performScrollTo().assertIsDisplayed()
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            rule.onNodeWithText("Thermische Belastung: nicht unterstützt").performScrollTo().assertIsDisplayed()
+            rule.onNodeWithText("Ressourcensignale teilweise nicht verfügbar", substring = true)
+                .performScrollTo().assertIsDisplayed()
         }
         for (label in listOf("Energiesparmodus öffnen", "App-Info von AI-DeviceCare öffnen")) {
             rule.onNodeWithText(label).performScrollTo().assertIsDisplayed().assertHasClickAction()
@@ -136,6 +140,12 @@ class M1InspectionAccessibilityTest {
         assertNoInspectionResults()
         rule.onNodeWithTag("inspection_start_button")
             .performScrollTo().assertIsDisplayed().assertIsEnabled().assertHasClickAction()
+    }
+
+    private fun assertExpectedApi() {
+        InstrumentationRegistry.getArguments().getString("expectedApi")?.let { expected ->
+            assertEquals("Expected Android API level", expected.toInt(), Build.VERSION.SDK_INT)
+        }
     }
 
     private fun assertNoInspectionResults() {
