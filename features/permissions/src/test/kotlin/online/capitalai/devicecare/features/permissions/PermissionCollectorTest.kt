@@ -1,10 +1,28 @@
 package online.capitalai.devicecare.features.permissions
 
+import java.util.concurrent.CancellationException
 import online.capitalai.devicecare.core.evidence.ObservationStatus
 import org.junit.Assert.*
 import org.junit.Test
 
 class PermissionCollectorTest {
+    @Test fun cancellationStopsBeforeReadingAnotherSampledPackage() {
+        val reads = mutableListOf<String>()
+        val cancellation = CancellationException()
+        val thrown = assertThrows(CancellationException::class.java) {
+            sumSampledPermissionRequests(
+                sampled = listOf("first", "second"),
+                checkCancellation = { if (reads.isNotEmpty()) throw cancellation },
+            ) { entry ->
+                reads.add(entry)
+                1
+            }
+        }
+
+        assertSame(cancellation, thrown)
+        assertEquals(listOf("first"), reads)
+    }
+
     @Test fun scopedCountsExposeTheirScopeWithoutInventingOtherApps() {
         val batch = PermissionEvidenceMapper.map(50L, PermissionReading(
             visiblePackages = 16, sampledPackages = 16, requestedInSample = 52,

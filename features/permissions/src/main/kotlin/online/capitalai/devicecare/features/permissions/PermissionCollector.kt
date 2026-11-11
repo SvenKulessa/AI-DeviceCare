@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import java.util.concurrent.CancellationException
 import online.capitalai.devicecare.core.evidence.DeviceObservation
 import online.capitalai.devicecare.core.evidence.DeviceObservationBatch
 import online.capitalai.devicecare.core.evidence.ObservationStatus
@@ -52,6 +53,15 @@ object PermissionEvidenceMapper {
     }
 }
 
+internal inline fun <T> sumSampledPermissionRequests(
+    sampled: List<T>,
+    checkCancellation: () -> Unit,
+    requestedCount: (T) -> Int,
+): Int = sampled.sumOf { entry ->
+    checkCancellation()
+    requestedCount(entry)
+}
+
 /** On-demand aggregate only. Does not persist or log the installed-app list. */
 class AndroidPermissionCollector(
     private val context: Context,
@@ -76,25 +86,31 @@ class AndroidPermissionCollector(
             pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
         }
 
-    fun collect(sampleLimit: Int = MAX_SAMPLE): DeviceObservationBatch {
+    fun collect(
+        sampleLimit: Int = MAX_SAMPLE,
+        checkCancellation: () -> Unit = {},
+    ): DeviceObservationBatch {
         require(sampleLimit in 1..MAX_SAMPLE)
         val now = clock()
         return try {
+            checkCancellation()
             val pm = context.packageManager
             val limited = sampleLimit < MAX_SAMPLE
             // On reduced profiles do not ask Android to expand permissions for the full list.
             val visible = packages(pm, if (limited) 0 else PackageManager.GET_PERMISSIONS)
+            checkCancellation()
             val sampled = visible.take(sampleLimit)
             val own = try {
                 permissionInfo(pm, context.packageName)
             } catch (_: PackageManager.NameNotFoundException) {
                 return PermissionEvidenceMapper.missing(now, ObservationStatus.ERROR, "OWN_PACKAGE_UNAVAILABLE")
             }
-            val requestedInSample = sampled.sumOf { entry ->
+            val requestedInSample = sumSampledPermissionRequests(sampled, checkCancellation) { entry ->
                 val info = if (!limited) entry else if (entry.packageName == context.packageName) own
                     else permissionInfo(pm, entry.packageName)
                 info.requestedPermissions?.size ?: 0
             }
+            checkCancellation()
             val ownRequested = own.requestedPermissions?.size ?: 0
             val flags = own.requestedPermissionsFlags
             val ownGranted: Int? = when {
@@ -112,6 +128,8 @@ class AndroidPermissionCollector(
                 ownGranted = ownGranted,
                 truncatedByLimit = visible.size > sampled.size,
             ))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: SecurityException) {
             PermissionEvidenceMapper.missing(now, ObservationStatus.DENIED, "ACCESS_DENIED")
         } catch (_: PackageManager.NameNotFoundException) {

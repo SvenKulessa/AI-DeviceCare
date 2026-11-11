@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import online.capitalai.devicecare.core.ui.DeviceCareHome
@@ -67,7 +68,9 @@ class MainActivity : ComponentActivity() {
                                     val profile = AndroidPermissionScanProfile(applicationContext).read()
                                     val budget = PermissionScanBudget.forProfile(profile)
                                     val battery = AndroidBatteryCollector(applicationContext).collect()
-                                    val permissions = AndroidPermissionCollector(applicationContext).collect(budget.packageLimit)
+                                    val permissions = AndroidPermissionCollector(applicationContext).collect(budget.packageLimit) {
+                                        coroutineContext.ensureActive()
+                                    }
                                     presentInspection(profile, budget, battery, permissions)
                                 }
                                 val elapsedMs = (SystemClock.elapsedRealtime() - startElapsed).coerceAtLeast(0)

@@ -15,8 +15,11 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.test.platform.app.InstrumentationRegistry
+import java.util.concurrent.CancellationException
 import online.capitalai.devicecare.features.permissions.AndroidPermissionCollector
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -67,6 +70,18 @@ class M1InspectionAccessibilityTest {
         val visible = checkNotNull(values["visible_packages"]).toInt()
         assertTrue("At least the app itself should be visible", visible >= 1)
         assertEquals((visible > 1).toString(), values["sample_truncated"])
+    }
+
+    @Test fun cancelledPermissionScanDoesNotReturnAnObservationBatch() {
+        val collector = AndroidPermissionCollector(rule.activity.applicationContext)
+        val cancellation = CancellationException()
+        var checks = 0
+        val thrown = assertThrows(CancellationException::class.java) {
+            collector.collect(sampleLimit = 1) {
+                if (++checks == 3) throw cancellation
+            }
+        }
+        assertSame(cancellation, thrown)
     }
 
     @Test fun userClickMakesOnlyScopedLocalObservationsVisible() {
