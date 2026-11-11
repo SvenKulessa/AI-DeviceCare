@@ -2,6 +2,7 @@ package online.capitalai.devicecare
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.os.Build
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertHasClickAction
@@ -64,9 +65,14 @@ class M1InspectionAccessibilityTest {
     }
 
     @Test fun reducedCollectorCapsPermissionMetadataSampling() {
+        InstrumentationRegistry.getArguments().getString("expectedApi")?.let { expected ->
+            assertEquals("Expected Android API level", expected.toInt(), Build.VERSION.SDK_INT)
+        }
         val batch = AndroidPermissionCollector(rule.activity.applicationContext).collect(sampleLimit = 1)
         val values = batch.observations.associate { it.id to it.value }
         assertEquals("1", values["sampled_packages"])
+        assertTrue("Own permission metadata should be readable",
+            checkNotNull(values["own_requested_permissions"]).toInt() >= 0)
         val visible = checkNotNull(values["visible_packages"]).toInt()
         assertTrue("At least the app itself should be visible", visible >= 1)
         assertEquals((visible > 1).toString(), values["sample_truncated"])

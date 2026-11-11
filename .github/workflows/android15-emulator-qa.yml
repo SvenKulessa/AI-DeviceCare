@@ -9,6 +9,30 @@ concurrency:
   cancel-in-progress: true
 jobs:
   android15-ui:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 35
+            name: android15-ui
+            artifact: devicecare-android15-ui-results
+            script: >-
+              adb -e shell settings put system font_scale 2.0 &&
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedFontScale=2.0 &&
+              mkdir -p apps/devicecare/build/reports/process-qa &&
+              python3 scripts/verify-emulator-process-restart.py
+              apps/devicecare/build/outputs/apk/debug/devicecare-debug.apk
+              > apps/devicecare/build/reports/process-qa/process-restart.json &&
+              cat apps/devicecare/build/reports/process-qa/process-restart.json
+          - api: 32
+            name: android12l-permission-compatibility
+            artifact: devicecare-api32-permission-results
+            script: >-
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedApi=32
+              -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#reducedCollectorCapsPermissionMetadataSampling
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -36,28 +60,20 @@ jobs:
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-36" "build-tools;36.0.0"
       - name: Compile Compose instrumentation tests
         run: gradle --no-daemon :apps:devicecare:assembleDebugAndroidTest
-      - name: Run on Android 15 emulator (API 35, 200% font scale)
+      - name: Run on Android emulator (API ${{ matrix.api }})
         uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         with:
-          api-level: 35
+          api-level: ${{ matrix.api }}
           target: google_apis
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: >-
-            adb -e shell settings put system font_scale 2.0 &&
-            gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
-            -Pandroid.testInstrumentationRunnerArguments.expectedFontScale=2.0 &&
-            mkdir -p apps/devicecare/build/reports/process-qa &&
-            python3 scripts/verify-emulator-process-restart.py
-            apps/devicecare/build/outputs/apk/debug/devicecare-debug.apk
-            > apps/devicecare/build/reports/process-qa/process-restart.json &&
-            cat apps/devicecare/build/reports/process-qa/process-restart.json
+          script: ${{ matrix.script }}
       - name: Capture redacted instrumentation results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: devicecare-android15-ui-results
+          name: ${{ matrix.artifact }}
           retention-days: 7
           if-no-files-found: warn
           path: |
