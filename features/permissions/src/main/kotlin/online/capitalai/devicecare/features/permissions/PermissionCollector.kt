@@ -53,13 +53,26 @@ object PermissionEvidenceMapper {
     }
 }
 
-internal inline fun <T> sumSampledPermissionRequests(
+internal data class PermissionSample(val packages: Int, val requestedPermissions: Int)
+
+internal inline fun <T> readSampledPermissionRequests(
     sampled: List<T>,
     checkCancellation: () -> Unit,
+    shouldDeferOptionalReads: () -> Boolean = { false },
     requestedCount: (T) -> Int,
-): Int = sampled.sumOf { entry ->
-    checkCancellation()
-    requestedCount(entry)
+): PermissionSample {
+    var packages = 0
+    var requestedPermissions = 0
+    for (entry in sampled) {
+        checkCancellation()
+        if (packages > 0 && packages % PermissionScanBudget.PRESSURE_LIMIT == 0) {
+            if (shouldDeferOptionalReads()) break
+            checkCancellation()
+        }
+        requestedPermissions += requestedCount(entry)
+        packages++
+    }
+    return PermissionSample(packages, requestedPermissions)
 }
 
 /** On-demand aggregate only. Does not persist or log the installed-app list. */
@@ -88,6 +101,7 @@ class AndroidPermissionCollector(
 
     fun collect(
         sampleLimit: Int = MAX_SAMPLE,
+        shouldDeferOptionalReads: () -> Boolean = { false },
         checkCancellation: () -> Unit = {},
     ): DeviceObservationBatch {
         require(sampleLimit in 1..MAX_SAMPLE)
@@ -105,7 +119,9 @@ class AndroidPermissionCollector(
             } catch (_: PackageManager.NameNotFoundException) {
                 return PermissionEvidenceMapper.missing(now, ObservationStatus.ERROR, "OWN_PACKAGE_UNAVAILABLE")
             }
-            val requestedInSample = sumSampledPermissionRequests(sampled, checkCancellation) { entry ->
+            val sample = readSampledPermissionRequests(
+                sampled, checkCancellation, shouldDeferOptionalReads = { limited && shouldDeferOptionalReads() },
+            ) { entry ->
                 val info = if (!limited) entry else if (entry.packageName == context.packageName) own
                     else permissionInfo(pm, entry.packageName)
                 info.requestedPermissions?.size ?: 0
@@ -122,11 +138,11 @@ class AndroidPermissionCollector(
             }
             PermissionEvidenceMapper.map(now, PermissionReading(
                 visiblePackages = visible.size,
-                sampledPackages = sampled.size,
-                requestedInSample = requestedInSample,
+                sampledPackages = sample.packages,
+                requestedInSample = sample.requestedPermissions,
                 ownRequested = ownRequested,
                 ownGranted = ownGranted,
-                truncatedByLimit = visible.size > sampled.size,
+                truncatedByLimit = visible.size > sample.packages,
             ))
         } catch (cancelled: CancellationException) {
             throw cancelled

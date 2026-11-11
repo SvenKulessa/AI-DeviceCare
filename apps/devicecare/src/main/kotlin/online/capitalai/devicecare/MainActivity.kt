@@ -65,13 +65,19 @@ class MainActivity : ComponentActivity() {
                             val startCpu = Process.getElapsedCpuTime()
                             try {
                                 val result = withContext(Dispatchers.IO) {
-                                    val profile = AndroidPermissionScanProfile(applicationContext).read()
+                                    val scanProfile = AndroidPermissionScanProfile(applicationContext)
+                                    val profile = scanProfile.read()
                                     val budget = PermissionScanBudget.forProfile(profile)
                                     val battery = AndroidBatteryCollector(applicationContext).collect()
-                                    val permissions = AndroidPermissionCollector(applicationContext).collect(budget.packageLimit) {
-                                        coroutineContext.ensureActive()
-                                    }
-                                    presentInspection(profile, budget, battery, permissions)
+                                    var deferred = false
+                                    val permissions = AndroidPermissionCollector(applicationContext).collect(
+                                        sampleLimit = budget.packageLimit,
+                                        shouldDeferOptionalReads = {
+                                            scanProfile.hasHighPressure().also { deferred = it }
+                                        },
+                                        checkCancellation = { coroutineContext.ensureActive() },
+                                    )
+                                    presentInspection(profile, budget, battery, permissions, deferred)
                                 }
                                 val elapsedMs = (SystemClock.elapsedRealtime() - startElapsed).coerceAtLeast(0)
                                 val cpuMs = (Process.getElapsedCpuTime() - startCpu).coerceAtLeast(0)

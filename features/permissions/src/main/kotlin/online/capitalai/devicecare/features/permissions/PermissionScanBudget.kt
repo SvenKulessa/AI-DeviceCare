@@ -19,6 +19,7 @@ enum class PermissionScanReason {
 data class PermissionScanBudget(val packageLimit: Int, val reasons: List<PermissionScanReason>) {
     companion object {
         const val STANDARD_LIMIT = 250
+        internal const val PRESSURE_LIMIT = 25
 
         fun forProfile(profile: PermissionScanProfile): PermissionScanBudget {
             val reasons = buildList {
@@ -34,7 +35,7 @@ data class PermissionScanBudget(val packageLimit: Int, val reasons: List<Permiss
             }
             val limit = when {
                 PermissionScanReason.MEMORY_PRESSURE in reasons ||
-                    PermissionScanReason.THERMAL_PRESSURE in reasons -> 25
+                    PermissionScanReason.THERMAL_PRESSURE in reasons -> PRESSURE_LIMIT
                 reasons.isNotEmpty() -> 75
                 else -> STANDARD_LIMIT
             }

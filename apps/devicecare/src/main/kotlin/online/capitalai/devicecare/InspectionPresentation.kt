@@ -17,6 +17,7 @@ internal fun presentInspection(
     budget: PermissionScanBudget,
     battery: DeviceObservationBatch,
     permissions: DeviceObservationBatch,
+    optionalReadsDeferred: Boolean,
 ): InspectionDisplay = InspectionDisplay(
     profileLines = listOf(
         budget.describe(profile.apiLevel),
@@ -30,7 +31,13 @@ internal fun presentInspection(
         "Android-Akkuzustand: ${battery.availability("battery_health_reported")} (Systemstatus)",
         "App-Berechtigungen: ${permissions.availability("sampled_packages", "nur für die von Android sichtbare Stichprobe verfügbar")}",
     ),
-    resultLines = showBatch(battery) + showBatch(permissions),
+    resultLines = buildList {
+        if (optionalReadsDeferred) {
+            add("Die Stichprobe wurde wegen Speicherdruck oder hoher thermischer Belastung während der Prüfung verkürzt.")
+        }
+        addAll(showBatch(battery))
+        addAll(showBatch(permissions))
+    },
 )
 
 private fun ResourceSignal.describe(clear: String, active: String): String = when (this) {
