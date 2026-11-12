@@ -1,8 +1,12 @@
 package online.capitalai.devicecare
 
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertHasClickAction
@@ -114,6 +118,32 @@ class M1InspectionAccessibilityTest {
             rule.onNodeWithText(label).performScrollTo().assertIsDisplayed().assertHasClickAction()
         }
         // The test does not infer mobile-device energy consumption or malware status.
+    }
+
+    @Test fun appInfoButtonDispatchesSettingsForOwnPackage() {
+        runManualInspection()
+        val button = rule.onNodeWithText("App-Info von AI-DeviceCare öffnen")
+            .performScrollTo().assertIsDisplayed()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val launches = mutableListOf<Intent>()
+        // Intercept the real Activity call so the test never changes system settings.
+        val monitor = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                launches.add(Intent(intent))
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        instrumentation.addMonitor(monitor)
+        try {
+            button.performClick()
+            rule.runOnIdle {
+                val launched = launches.single()
+                assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, launched.action)
+                assertEquals("package:${instrumentation.targetContext.packageName}", launched.dataString)
+            }
+        } finally {
+            instrumentation.removeMonitor(monitor)
+        }
     }
 
     @Test fun rotationAndActivityRecreationRequireAnotherManualScan() {
