@@ -1,3 +1,9 @@
+# Complementary CI contract checks. Android P0 build and core tests
+# (.github/workflows/android-p0.yml) is the authoritative full Android gate:
+# Gradle unit tests, both APK builds, lint, Trivy, source permission policy,
+# negative APK-policy fixtures, actual packaged APK manifest and provenance.
+# Do not duplicate the Android SDK/Gradle setup here or interpret this workflow
+# passing as approval when the independent Android P0 gate fails.
 name: CI
 
 on:
@@ -14,97 +20,16 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
-    name: Build & Unit Tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: ${{ runner.os }}-gradle-
-      - name: Build debug & run unit tests
-        run: ./gradlew :apps:devicecare:assembleDebug :apps:devicecare:testDebugUnitTest --no-daemon
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-results
-          path: '**/build/reports/tests/**'
-          retention-days: 7
-
-  lint-and-policy:
-    name: Lint & Manifest Policy
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    needs: build-and-test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: Lint
-        run: ./gradlew :apps:devicecare:lintDebug --no-daemon
-      - name: Verify packaged APK policy
-        run: node scripts/verify-apk-policy.mjs || true
-      - name: Upload lint & policy
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-and-policy
-          path: |
-            **/build/reports/lint-results*
-            evidence/apk-manifest-policy.json
-          retention-days: 7
-
-  governance:
-    name: Governance
+  governance-and-policy:
+    name: Governance and policy-contract tests
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - name: Run governance checks
-        run: |
-          # Platzhalter – bestehende Governance-Skripte hier aufrufen
-          echo "Governance checks passed"
-
-  emulator-qa:
-    name: Emulator QA (optional)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    needs: build-and-test
-    if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, '[emulator]')
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          distribution: temurin
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: Run Android 15 emulator smoke test
-        uses: reactivecircus/android-emulator-runner@v2.37.0
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio
-          disable-animations: true
-          script: ./gradlew :apps:devicecare:connectedDebugAndroidTest --no-daemon
-      - name: Upload emulator results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: emulator-qa-results
-          path: '**/build/reports/androidTests/**'
-          retention-days: 7
+          persist-credentials: false
+      - name: Validate root governance
+        run: node scripts/validate-governance.mjs
+      - name: Verify governance and APK-policy negative fixtures
+        run: node --test scripts/validate-governance.test.mjs scripts/verify-apk-policy.test.mjs
