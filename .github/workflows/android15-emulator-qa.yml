@@ -26,6 +26,13 @@ jobs:
               apps/devicecare/build/outputs/apk/debug/devicecare-debug.apk
               > apps/devicecare/build/reports/process-qa/process-restart.json &&
               cat apps/devicecare/build/reports/process-qa/process-restart.json
+          - api: 33
+            name: android13-permission-compatibility
+            artifact: devicecare-api33-permission-results
+            script: >-
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedApi=33
+              -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#reducedCollectorCapsPermissionMetadataSampling
           - api: 32
             name: android12l-permission-compatibility
             artifact: devicecare-api32-permission-results
