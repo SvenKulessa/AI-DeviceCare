@@ -8,6 +8,10 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertHasClickAction
@@ -148,6 +152,21 @@ class M1InspectionAccessibilityTest {
     }
 
     @Test fun missingAppInfoHandlerShowsGeneralSettingsHint() {
+        assertAppInfoFallback(
+            generalSettingsAllowed = true,
+            expectedHint = "Die Zielseite ist nicht verfügbar. Öffne in den Einstellungen Apps → AI-DeviceCare.",
+        )
+    }
+
+    @Test fun deniedGeneralSettingsShowsUnavailableHintAfterMissingAppInfoHandler() {
+        assertAppInfoFallback(
+            generalSettingsAllowed = false,
+            expectedHint = "Android-Einstellungen konnten nicht geöffnet werden. " +
+                "Öffne in den Einstellungen Apps → AI-DeviceCare.",
+        )
+    }
+
+    private fun assertAppInfoFallback(generalSettingsAllowed: Boolean, expectedHint: String) {
         runManualInspection()
         val button = rule.onNodeWithText("App-Info von AI-DeviceCare öffnen")
             .performScrollTo().assertIsDisplayed()
@@ -158,6 +177,9 @@ class M1InspectionAccessibilityTest {
                 actions.add(intent.action)
                 if (intent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS) {
                     throw ActivityNotFoundException("No app-info handler in this test")
+                }
+                if (intent.action == Settings.ACTION_SETTINGS && !generalSettingsAllowed) {
+                    throw SecurityException("General Settings denied in this test")
                 }
                 return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
             }
@@ -171,9 +193,10 @@ class M1InspectionAccessibilityTest {
                     actions,
                 )
             }
-            rule.onNodeWithText(
-                "Die Zielseite ist nicht verfügbar. Öffne in den Einstellungen Apps → AI-DeviceCare.",
-            ).performScrollTo().assertIsDisplayed()
+            rule.onNodeWithText(expectedHint)
+                .performScrollTo()
+                .assertIsDisplayed()
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
         } finally {
             instrumentation.removeMonitor(monitor)
         }
