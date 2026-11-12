@@ -14,6 +14,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - api: 36
+            name: android16-target-sdk-inspection
+            artifact: devicecare-api36-inspection-results
+            script: >-
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedApi=36
+              -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#userClickMakesOnlyScopedLocalObservationsVisible
           - api: 35
             name: android15-ui
             artifact: devicecare-android15-ui-results
