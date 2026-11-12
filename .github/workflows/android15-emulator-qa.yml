@@ -60,8 +60,14 @@ jobs:
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          test -r /dev/kvm && test -w /dev/kvm
+          sudo timeout 10s udevadm trigger --settle --name-match=kvm
+          if ! timeout 10s bash -c 'until [[ -c /dev/kvm && -r /dev/kvm && -w /dev/kvm ]]; do sleep 0.25; done'; then
+            echo "::error::KVM device did not become readable and writable within 10 seconds"
+            ls -l /dev/kvm || true
+            id
+            exit 1
+          fi
+          stat -c 'KVM ready: %n (%F, mode %a, owner %U:%G)' /dev/kvm
       - name: Install compile platform 36
         run: |
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-36" "build-tools;36.0.0"
