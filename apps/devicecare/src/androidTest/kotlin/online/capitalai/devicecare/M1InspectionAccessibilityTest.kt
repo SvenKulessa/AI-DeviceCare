@@ -2,6 +2,7 @@ package online.capitalai.devicecare
 
 import android.app.Activity
 import android.app.Instrumentation
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
@@ -141,6 +142,38 @@ class M1InspectionAccessibilityTest {
                 assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, launched.action)
                 assertEquals("package:${instrumentation.targetContext.packageName}", launched.dataString)
             }
+        } finally {
+            instrumentation.removeMonitor(monitor)
+        }
+    }
+
+    @Test fun missingAppInfoHandlerShowsGeneralSettingsHint() {
+        runManualInspection()
+        val button = rule.onNodeWithText("App-Info von AI-DeviceCare öffnen")
+            .performScrollTo().assertIsDisplayed()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val actions = mutableListOf<String?>()
+        val monitor = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                actions.add(intent.action)
+                if (intent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS) {
+                    throw ActivityNotFoundException("No app-info handler in this test")
+                }
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        instrumentation.addMonitor(monitor)
+        try {
+            button.performClick()
+            rule.runOnIdle {
+                assertEquals(
+                    listOf(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Settings.ACTION_SETTINGS),
+                    actions,
+                )
+            }
+            rule.onNodeWithText(
+                "Die Zielseite ist nicht verfügbar. Öffne in den Einstellungen Apps → AI-DeviceCare.",
+            ).performScrollTo().assertIsDisplayed()
         } finally {
             instrumentation.removeMonitor(monitor)
         }
