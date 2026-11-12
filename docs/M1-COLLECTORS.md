@@ -22,6 +22,7 @@ Status: **CODE IMPLEMENTED / DEVICE RUNTIME NOT YET VERIFIED**. Android public A
 - Exposes aggregate counts only: visible packages, up to 250 sampled packages, their requested-permission count, this app's requested and confirmed granted-permission counts, sampling-truncated marker.
 - **Not** an inventory of all installed/system apps. Does **not** infer another package's granted permissions or assign a privacy/malware threat verdict. No `QUERY_ALL_PACKAGES` or `<queries>` added.
 - The raw list of package names never leaves the collector and is not written to logs, evidence reports, database, or network.
+- Cancellation is checked between package metadata calls and before publishing aggregates. A synchronous Android call already in progress can finish. A cancelled scan returns no new batch.
 - Inaccessible/unknown own-permission flags remain `UNSUPPORTED`, not a granted/denied guess.
 
 ### Canonical versioned observation schema

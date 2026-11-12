@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import java.util.concurrent.CancellationException
 import online.capitalai.devicecare.core.evidence.DeviceObservation
 import online.capitalai.devicecare.core.evidence.DeviceObservationBatch
 import online.capitalai.devicecare.core.evidence.ObservationStatus
@@ -52,37 +53,80 @@ object PermissionEvidenceMapper {
     }
 }
 
+internal data class PermissionSample(val packages: Int, val requestedPermissions: Int)
+
+internal inline fun <T> readSampledPermissionRequests(
+    sampled: List<T>,
+    checkCancellation: () -> Unit,
+    shouldDeferOptionalReads: () -> Boolean = { false },
+    requestedCount: (T) -> Int,
+): PermissionSample {
+    var packages = 0
+    var requestedPermissions = 0
+    for (entry in sampled) {
+        checkCancellation()
+        if (packages > 0 && packages % PermissionScanBudget.PRESSURE_LIMIT == 0) {
+            if (shouldDeferOptionalReads()) break
+            checkCancellation()
+        }
+        requestedPermissions += requestedCount(entry)
+        packages++
+    }
+    return PermissionSample(packages, requestedPermissions)
+}
+
 /** On-demand aggregate only. Does not persist or log the installed-app list. */
 class AndroidPermissionCollector(
     private val context: Context,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
-    companion object { const val MAX_SAMPLE = 250 }
+    companion object { const val MAX_SAMPLE = PermissionScanBudget.STANDARD_LIMIT }
 
     @Suppress("DEPRECATION")
-    private fun packages(pm: PackageManager): List<PackageInfo> =
+    private fun packages(pm: PackageManager, flags: Int): List<PackageInfo> =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
+            pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(flags.toLong()))
         } else {
-            pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+            pm.getInstalledPackages(flags)
         }
 
     @Suppress("DEPRECATION")
-    private fun ownInfo(pm: PackageManager): PackageInfo =
+    private fun permissionInfo(pm: PackageManager, packageName: String): PackageInfo =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.getPackageInfo(context.packageName,
+            pm.getPackageInfo(packageName,
                 PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()))
         } else {
-            pm.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
+            pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
         }
 
-    fun collect(): DeviceObservationBatch {
+    fun collect(
+        sampleLimit: Int = MAX_SAMPLE,
+        shouldDeferOptionalReads: () -> Boolean = { false },
+        checkCancellation: () -> Unit = {},
+    ): DeviceObservationBatch {
+        require(sampleLimit in 1..MAX_SAMPLE)
         val now = clock()
         return try {
+            checkCancellation()
             val pm = context.packageManager
-            val visible = packages(pm)
-            val sampled = visible.take(MAX_SAMPLE)
-            val own = ownInfo(pm)
+            val limited = sampleLimit < MAX_SAMPLE
+            // On reduced profiles do not ask Android to expand permissions for the full list.
+            val visible = packages(pm, if (limited) 0 else PackageManager.GET_PERMISSIONS)
+            checkCancellation()
+            val sampled = visible.take(sampleLimit)
+            val own = try {
+                permissionInfo(pm, context.packageName)
+            } catch (_: PackageManager.NameNotFoundException) {
+                return PermissionEvidenceMapper.missing(now, ObservationStatus.ERROR, "OWN_PACKAGE_UNAVAILABLE")
+            }
+            val sample = readSampledPermissionRequests(
+                sampled, checkCancellation, shouldDeferOptionalReads = { limited && shouldDeferOptionalReads() },
+            ) { entry ->
+                val info = if (!limited) entry else if (entry.packageName == context.packageName) own
+                    else permissionInfo(pm, entry.packageName)
+                info.requestedPermissions?.size ?: 0
+            }
+            checkCancellation()
             val ownRequested = own.requestedPermissions?.size ?: 0
             val flags = own.requestedPermissionsFlags
             val ownGranted: Int? = when {
@@ -94,16 +138,19 @@ class AndroidPermissionCollector(
             }
             PermissionEvidenceMapper.map(now, PermissionReading(
                 visiblePackages = visible.size,
-                sampledPackages = sampled.size,
-                requestedInSample = sampled.sumOf { it.requestedPermissions?.size ?: 0 },
+                sampledPackages = sample.packages,
+                requestedInSample = sample.requestedPermissions,
                 ownRequested = ownRequested,
                 ownGranted = ownGranted,
-                truncatedByLimit = visible.size > sampled.size,
+                truncatedByLimit = visible.size > sample.packages,
             ))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: SecurityException) {
             PermissionEvidenceMapper.missing(now, ObservationStatus.DENIED, "ACCESS_DENIED")
         } catch (_: PackageManager.NameNotFoundException) {
-            PermissionEvidenceMapper.missing(now, ObservationStatus.ERROR, "OWN_PACKAGE_UNAVAILABLE")
+            // The visible set changed during sampling; do not publish a partial total.
+            PermissionEvidenceMapper.missing(now, ObservationStatus.ERROR, "READ_FAILED")
         } catch (_: RuntimeException) {
             PermissionEvidenceMapper.missing(now, ObservationStatus.ERROR, "READ_FAILED")
         }

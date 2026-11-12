@@ -9,6 +9,51 @@ concurrency:
   cancel-in-progress: true
 jobs:
   android15-ui:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 36
+            name: android16-target-sdk-inspection
+            artifact: devicecare-api36-inspection-results
+            script: >-
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedApi=36
+              -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#userClickMakesOnlyScopedLocalObservationsVisible
+          - api: 35
+            name: android15-ui
+            artifact: devicecare-android15-ui-results
+            script: >-
+              adb -e shell settings put system font_scale 2.0 &&
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedFontScale=2.0 &&
+              mkdir -p apps/devicecare/build/reports/process-qa &&
+              python3 scripts/verify-emulator-process-restart.py
+              apps/devicecare/build/outputs/apk/debug/devicecare-debug.apk
+              > apps/devicecare/build/reports/process-qa/process-restart.json &&
+              cat apps/devicecare/build/reports/process-qa/process-restart.json
+          - api: 33
+            name: android13-permission-compatibility
+            artifact: devicecare-api33-permission-results
+            script: >-
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedApi=33
+              -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#reducedCollectorCapsPermissionMetadataSampling
+          - api: 32
+            name: android12l-permission-compatibility
+            artifact: devicecare-api32-permission-results
+            script: >-
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedApi=32
+              -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#reducedCollectorCapsPermissionMetadataSampling
+          - api: 26
+            name: android8-minimum-sdk-inspection
+            artifact: devicecare-api26-inspection-results
+            script: >-
+              gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+              -Pandroid.testInstrumentationRunnerArguments.expectedApi=26
+              -Pandroid.testInstrumentationRunnerArguments.class=online.capitalai.devicecare.M1InspectionAccessibilityTest#userClickMakesOnlyScopedLocalObservationsVisible
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -29,29 +74,36 @@ jobs:
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          test -r /dev/kvm && test -w /dev/kvm
+          sudo timeout 10s udevadm trigger --settle --name-match=kvm
+          if ! timeout 10s bash -c 'until [[ -c /dev/kvm && -r /dev/kvm && -w /dev/kvm ]]; do sleep 0.25; done'; then
+            echo "::error::KVM device did not become readable and writable within 10 seconds"
+            ls -l /dev/kvm || true
+            id
+            exit 1
+          fi
+          stat -c 'KVM ready: %n (%F, mode %a, owner %U:%G)' /dev/kvm
       - name: Install compile platform 36
         run: |
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-36" "build-tools;36.0.0"
       - name: Compile Compose instrumentation tests
         run: gradle --no-daemon :apps:devicecare:assembleDebugAndroidTest
-      - name: Run on Android 15 emulator (API 35)
+      - name: Run on Android emulator (API ${{ matrix.api }})
         uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
         with:
-          api-level: 35
+          api-level: ${{ matrix.api }}
           target: google_apis
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: gradle --no-daemon :apps:devicecare:connectedDebugAndroidTest
+          script: ${{ matrix.script }}
       - name: Capture redacted instrumentation results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: devicecare-android15-ui-results
+          name: ${{ matrix.artifact }}
           retention-days: 7
           if-no-files-found: warn
           path: |
             apps/devicecare/build/outputs/androidTest-results/connected/**/*.xml
             apps/devicecare/build/reports/androidTests/connected/**
+            apps/devicecare/build/reports/process-qa/process-restart.json

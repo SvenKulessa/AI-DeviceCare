@@ -1,5 +1,17 @@
 package online.capitalai.devicecare
 
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.os.Build
+import android.provider.Settings
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertHasClickAction
@@ -8,16 +20,22 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.test.platform.app.InstrumentationRegistry
+import java.util.concurrent.CancellationException
+import online.capitalai.devicecare.features.permissions.AndroidPermissionCollector
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
 /**
- * Android 15 emulator smoke tests, not OEM accuracy, device power or TalkBack
+ * Android emulator smoke tests, not OEM accuracy, device power or TalkBack
  * certification. The only execution path into collectors is the user's click.
  */
 class M1InspectionAccessibilityTest {
@@ -29,8 +47,7 @@ class M1InspectionAccessibilityTest {
         rule.onNodeWithText("Risk score: NOT_ASSESSABLE", substring = true).assertExists()
         rule.onNodeWithText("Keine Speicherung, kein Upload", substring = true).assertExists()
         rule.onNodeWithText("Momentaufnahme;", substring = true).assertExists()
-        assertTrue(rule.onAllNodesWithText("Quelle:", substring = true)
-            .fetchSemanticsNodes().isEmpty())
+        assertNoInspectionResults()
     }
 
     @Test fun scrollContentStaysOutsideSystemBars() {
@@ -56,15 +73,178 @@ class M1InspectionAccessibilityTest {
         rule.onNodeWithText("Cloud, analytics, VPN", substring = true).performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun reducedCollectorCapsPermissionMetadataSampling() {
+        assertExpectedApi()
+        val batch = AndroidPermissionCollector(rule.activity.applicationContext).collect(sampleLimit = 1)
+        val values = batch.observations.associate { it.id to it.value }
+        assertEquals("1", values["sampled_packages"])
+        assertTrue("Own permission metadata should be readable",
+            checkNotNull(values["own_requested_permissions"]).toInt() >= 0)
+        val visible = checkNotNull(values["visible_packages"]).toInt()
+        assertTrue("At least the app itself should be visible", visible >= 1)
+        assertEquals((visible > 1).toString(), values["sample_truncated"])
+    }
+
+    @Test fun cancelledPermissionScanDoesNotReturnAnObservationBatch() {
+        val collector = AndroidPermissionCollector(rule.activity.applicationContext)
+        val cancellation = CancellationException()
+        var checks = 0
+        val thrown = assertThrows(CancellationException::class.java) {
+            collector.collect(sampleLimit = 1) {
+                if (++checks == 3) throw cancellation
+            }
+        }
+        assertSame(cancellation, thrown)
+    }
+
     @Test fun userClickMakesOnlyScopedLocalObservationsVisible() {
+        assertExpectedApi()
+        // Verify the running Activity picked up the emulator's requested setting.
+        InstrumentationRegistry.getArguments().getString("expectedFontScale")?.let { expected ->
+            assertEquals(
+                "Requested font scale must be active before checking scan results",
+                expected.toFloat(),
+                rule.activity.resources.configuration.fontScale,
+                0f,
+            )
+        }
+        runManualInspection()
+        rule.onNodeWithText("Risk score: NOT_ASSESSABLE", substring = true).assertExists()
+        rule.onNodeWithText("Prüfumfang (Android API", substring = true).performScrollTo().assertIsDisplayed()
+        for (label in listOf("Geräteprofil", "Thermische Belastung:", "Akkutemperatur:", "App-Berechtigungen:")) {
+            rule.onNodeWithText(label, substring = true).performScrollTo().assertIsDisplayed()
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            rule.onNodeWithText("Thermische Belastung: nicht unterstützt").performScrollTo().assertIsDisplayed()
+            rule.onNodeWithText("Ressourcensignale teilweise nicht verfügbar", substring = true)
+                .performScrollTo().assertIsDisplayed()
+        }
+        for (label in listOf("Energiesparmodus öffnen", "App-Info von AI-DeviceCare öffnen")) {
+            rule.onNodeWithText(label).performScrollTo().assertIsDisplayed().assertHasClickAction()
+        }
+        // The test does not infer mobile-device energy consumption or malware status.
+    }
+
+    @Test fun appInfoButtonDispatchesSettingsForOwnPackage() {
+        runManualInspection()
+        val button = rule.onNodeWithText("App-Info von AI-DeviceCare öffnen")
+            .performScrollTo().assertIsDisplayed()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val launches = mutableListOf<Intent>()
+        // Intercept the real Activity call so the test never changes system settings.
+        val monitor = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                launches.add(Intent(intent))
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        instrumentation.addMonitor(monitor)
+        try {
+            button.performClick()
+            rule.runOnIdle {
+                val launched = launches.single()
+                assertEquals(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, launched.action)
+                assertEquals("package:${instrumentation.targetContext.packageName}", launched.dataString)
+            }
+        } finally {
+            instrumentation.removeMonitor(monitor)
+        }
+    }
+
+    @Test fun missingAppInfoHandlerShowsGeneralSettingsHint() {
+        assertAppInfoFallback(
+            generalSettingsAllowed = true,
+            expectedHint = "Die Zielseite ist nicht verfügbar. Öffne in den Einstellungen Apps → AI-DeviceCare.",
+        )
+    }
+
+    @Test fun deniedGeneralSettingsShowsUnavailableHintAfterMissingAppInfoHandler() {
+        assertAppInfoFallback(
+            generalSettingsAllowed = false,
+            expectedHint = "Android-Einstellungen konnten nicht geöffnet werden. " +
+                "Öffne in den Einstellungen Apps → AI-DeviceCare.",
+        )
+    }
+
+    private fun assertAppInfoFallback(generalSettingsAllowed: Boolean, expectedHint: String) {
+        runManualInspection()
+        val button = rule.onNodeWithText("App-Info von AI-DeviceCare öffnen")
+            .performScrollTo().assertIsDisplayed()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val actions = mutableListOf<String?>()
+        val monitor = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult {
+                actions.add(intent.action)
+                if (intent.action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS) {
+                    throw ActivityNotFoundException("No app-info handler in this test")
+                }
+                if (intent.action == Settings.ACTION_SETTINGS && !generalSettingsAllowed) {
+                    throw SecurityException("General Settings denied in this test")
+                }
+                return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+            }
+        }
+        instrumentation.addMonitor(monitor)
+        try {
+            button.performClick()
+            rule.runOnIdle {
+                assertEquals(
+                    listOf(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Settings.ACTION_SETTINGS),
+                    actions,
+                )
+            }
+            rule.onNodeWithText(expectedHint)
+                .performScrollTo()
+                .assertIsDisplayed()
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        } finally {
+            instrumentation.removeMonitor(monitor)
+        }
+    }
+
+    @Test fun rotationAndActivityRecreationRequireAnotherManualScan() {
+        val scenario = rule.activityRule.scenario
+        scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        }
+        runManualInspection()
+        rule.onNodeWithText("Geräteprofil").performScrollTo().assertIsDisplayed()
+
+        scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+        rule.waitUntil(timeoutMillis = 10_000) {
+            rule.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        }
+        assertNoInspectionResults()
+
+        runManualInspection()
+        rule.onNodeWithText("Geräteprofil").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("App-Info von AI-DeviceCare öffnen")
+            .performScrollTo().assertIsDisplayed().assertHasClickAction()
+
+        scenario.recreate()
+        assertNoInspectionResults()
+        rule.onNodeWithTag("inspection_start_button")
+            .performScrollTo().assertIsDisplayed().assertIsEnabled().assertHasClickAction()
+    }
+
+    private fun assertExpectedApi() {
+        InstrumentationRegistry.getArguments().getString("expectedApi")?.let { expected ->
+            assertEquals("Expected Android API level", expected.toInt(), Build.VERSION.SDK_INT)
+        }
+    }
+
+    private fun assertNoInspectionResults() {
+        rule.onNodeWithText("Quelle:", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Geräteprofil").assertDoesNotExist()
+        rule.onNodeWithText("Energiesparmodus öffnen").assertDoesNotExist()
+    }
+
+    private fun runManualInspection() {
         rule.onNodeWithTag("inspection_start_button").performScrollTo().performClick()
         rule.waitUntil(timeoutMillis = 20_000) {
             rule.onAllNodesWithText("Quelle:", substring = true)
-                .fetchSemanticsNodes().isNotEmpty() ||
-            rule.onAllNodesWithText("Lokale Prüfung nicht verfügbar", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Risk score: NOT_ASSESSABLE", substring = true).assertExists()
-        // The test does not infer mobile-device energy consumption or malware status.
     }
 }

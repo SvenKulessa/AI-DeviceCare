@@ -1,10 +1,63 @@
 package online.capitalai.devicecare.features.permissions
 
+import java.util.concurrent.CancellationException
 import online.capitalai.devicecare.core.evidence.ObservationStatus
 import org.junit.Assert.*
 import org.junit.Test
 
 class PermissionCollectorTest {
+    @Test fun cancellationStopsBeforeReadingAnotherSampledPackage() {
+        val reads = mutableListOf<String>()
+        val cancellation = CancellationException()
+        val thrown = assertThrows(CancellationException::class.java) {
+            readSampledPermissionRequests(
+                sampled = listOf("first", "second"),
+                checkCancellation = { if (reads.isNotEmpty()) throw cancellation },
+            ) { entry ->
+                reads.add(entry)
+                1
+            }
+        }
+
+        assertSame(cancellation, thrown)
+        assertEquals(listOf("first"), reads)
+    }
+
+    @Test fun risingPressureDefersRemainingPackageReads() {
+        val reads = mutableListOf<Int>()
+        val checkpoints = mutableListOf<Int>()
+        val sample = readSampledPermissionRequests(
+            sampled = (1..75).toList(),
+            checkCancellation = {},
+            shouldDeferOptionalReads = {
+                checkpoints.add(reads.size)
+                reads.size == 50
+            },
+        ) { entry ->
+            reads.add(entry)
+            2
+        }
+
+        assertEquals(listOf(25, 50), checkpoints)
+        assertEquals((1..50).toList(), reads)
+        assertEquals(PermissionSample(50, 100), sample)
+    }
+
+    @Test fun clearCheckpointsKeepThePlannedSample() {
+        var checks = 0
+        val sample = readSampledPermissionRequests(
+            sampled = (1..75).toList(),
+            checkCancellation = {},
+            shouldDeferOptionalReads = {
+                checks++
+                false
+            },
+        ) { 2 }
+
+        assertEquals(2, checks)
+        assertEquals(PermissionSample(75, 150), sample)
+    }
+
     @Test fun scopedCountsExposeTheirScopeWithoutInventingOtherApps() {
         val batch = PermissionEvidenceMapper.map(50L, PermissionReading(
             visiblePackages = 16, sampledPackages = 16, requestedInSample = 52,
