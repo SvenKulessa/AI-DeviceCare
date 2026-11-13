@@ -9,8 +9,13 @@ android {
         applicationId = "online.capitalai.devicecare"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-m1-preview"
+        val requestedCode = providers.gradleProperty("versionCode").orElse("1").get()
+        versionCode = requestedCode.toIntOrNull()?.takeIf { it in 1..2_100_000_000 }
+            ?: error("versionCode must be an integer between 1 and 2100000000")
+        versionName = providers.gradleProperty("versionName").orElse("0.1.0-m1-preview").get()
+        require(versionName!!.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?"))) {
+            "versionName must use major.minor.patch with an optional suffix"
+        }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true }
