@@ -50,6 +50,10 @@ class SyntheticFixtureAdapterTest {
                 f.events.any { (kind, count) -> kind !in allowedEvents || count !in 0..250 }
             ) return Gate.NOT_ASSESSABLE
 
+            if (f.coverage == "known_subset") {
+                return if (f.permissions.isNotEmpty()) Gate.REVIEW_ONLY else Gate.NOT_ASSESSABLE
+            }
+
             if ((f.events["synthetic_rename_count"] ?: 0) > 0 &&
                 (f.events["synthetic_encryption_hint"] ?: 0) > 0
             ) return Gate.SIMULATION_REVIEW
@@ -60,9 +64,7 @@ class SyntheticFixtureAdapterTest {
             // This label is specific to a fully specified artificial test case.
             if (f.events.isEmpty() ||
                 (f.events.keys == setOf("synthetic_benign_backup_count"))
-            ) return if (f.coverage == "full_test_fixture") {
-                Gate.NO_MALWARE_EVIDENCE
-            } else Gate.NOT_ASSESSABLE
+            ) return Gate.NO_MALWARE_EVIDENCE
 
             return Gate.REVIEW_ONLY
         }
@@ -99,15 +101,20 @@ class SyntheticFixtureAdapterTest {
     }
 
     @Test fun permissionsAloneNeverProduceAnAutomaticProtectionDecision() {
-        val camera = referenceCases.first { it.id == "SYN-001" }
-        assertEquals(Gate.REVIEW_ONLY, assessFixture(camera))
-        val notification = referenceCases.first { it.id == "SYN-009" }
-        assertEquals(Gate.REVIEW_ONLY, assessFixture(notification))
+        val emptyFixture = referenceCases.first { it.id == "SYN-002" }
+        for (permission in allowedPermissions) {
+            val permissionOnly = emptyFixture.copy(permissions = listOf(permission))
+            assertEquals(permission, Gate.REVIEW_ONLY, assessFixture(permissionOnly))
+        }
     }
 
     @Test fun artificialRenameAndEncryptionHintsRemainSimulationOnly() {
         val ransomwareLike = referenceCases.first { it.id == "SYN-004" }
         assertEquals(Gate.SIMULATION_REVIEW, assessFixture(ransomwareLike))
+        val partial = ransomwareLike.copy(coverage = "known_subset")
+        assertEquals(Gate.NOT_ASSESSABLE, assessFixture(partial))
+        assertEquals(Gate.REVIEW_ONLY, assessFixture(partial.copy(
+            permissions = listOf("android.permission.CAMERA"))))
         assertEquals(Gate.REVIEW_ONLY, assessFixture(ransomwareLike.copy(
             events = mapOf("synthetic_rename_count" to 25))))
     }
