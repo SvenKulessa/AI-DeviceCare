@@ -32,6 +32,7 @@ fun DeviceCareHome(
     appName: String,
     enterprise: Boolean,
     onInspect: (() -> Unit)? = null,
+    onOpenSystemSecurity: (() -> Unit)? = null,
     inspectionInProgress: Boolean = false,
     inspectionLines: List<String> = emptyList(),
     inspectionProfileLines: List<String> = emptyList(),
@@ -61,6 +62,13 @@ fun DeviceCareHome(
                 Text("Build evidence: NOT_PROVEN until matched to this artifact.")
                 Text("Device scoring pipeline", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge)
                 Text("Risk score: NOT_ASSESSABLE - no calibrated model or complete device evidence.")
+                if (!enterprise && onOpenSystemSecurity != null) {
+                    Text("Systemupdates, Google Play-Dienste, WebView und Play Protect separat prüfen.")
+                    Button(onClick = onOpenSystemSecurity,
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("system_security_open")) {
+                        Text("System- & Google-Sicherheitscheck öffnen")
+                    }
+                }
                 if (!enterprise && onInspect != null) {
                     Text("Lokale Prüfung auf ausdrücklichen Start: Akku und nur die von Android sichtbaren Apps. Keine vollständige App-Inventur. Keine automatischen Änderungen.")
                     Button(onClick = onInspect, enabled = !inspectionInProgress, modifier = Modifier.heightIn(min = 48.dp).testTag("inspection_start_button")) {
