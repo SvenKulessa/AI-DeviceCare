@@ -15,7 +15,7 @@ object StatisticalValidation {
         init {
             require(listOf(tp, fp, tn, fn, excluded, unknown, notAssessable).all { it >= 0 })
             require(unknown <= excluded && notAssessable <= excluded)
-            require(unknown + notAssessable == excluded)
+            require(Math.addExact(unknown, notAssessable) == excluded)
             total() // overflow check
         }
         fun total(): Long = Math.addExact(Math.addExact(Math.addExact(tp, fp), Math.addExact(tn, fn)), excluded)
