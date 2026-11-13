@@ -5,6 +5,7 @@
 | User feature | What Android public APIs can provide | Permission / consent | Limitations / safe remediation | Initial milestone |
 | --- | --- | --- | --- | --- |
 | Basic device posture | Android API level, patch version, available storage, charging state | No sensitive permission for basic metadata | OEM-specific fields may be absent | M1 |
+| System & Google security updates | Android release/security patch, scoped Play Services & Store versions, active WebView provider | Only two precise `<queries>` package declarations; no Android permission; manual settings handoffs | Play Protect, Beta membership, Google Play-system patch and OEM OTA not reliably readable through public APIs; do not infer CVE status or newest release | M1 consumer / Issue #18 |
 | Battery analysis | Level/status/temp/health and optional current/cycle measurements, when supported | Typically no dangerous permission for BATTERY_CHANGED/BatteryManager basics | No comprehensive per-app mAh, thermal sensors may vary; label unavailable data | M1 |
 | Battery optimization | Guided power-save and app battery settings | User acts in OS settings | Other apps' power modes cannot be broadly set silently; usage stats are approximate and require separate special access | M1 |
 | Installed apps | PackageManager visible metadata | scoped <queries> or justified QUERY_ALL_PACKAGES | Android package visibility is restricted; Play acceptance required for broad inventory | M1 |
@@ -69,3 +70,7 @@ After a manual scan, the Consumer preview can open Android's battery-saver scree
 - Google Play VPN policy: https://support.google.com/googleplay/android-developer/answer/12564964
 - Android storage manager: https://developer.android.com/reference/android/os/storage/StorageManager
 - Google Play repetitive content: https://support.google.com/googleplay/android-developer/answer/9899034
+
+## M1 local System & Google security check — Issue #18
+
+Consumer-only standalone, on-demand Compose screen; details and security model: [SYSTEM-GOOGLE-SECURITY-WORKFLOW.md](SYSTEM-GOOGLE-SECURITY-WORKFLOW.md). No new dangerous/special permission, remote fetch, data persistence or automated OS changes. API 26+; OEM Android-15 verification, final CI evidence and Play release remain separate gates.
