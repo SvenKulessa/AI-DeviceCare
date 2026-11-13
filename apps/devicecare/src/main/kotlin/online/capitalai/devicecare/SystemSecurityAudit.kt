@@ -58,8 +58,6 @@ internal class AndroidSystemSecurityReader(
             WebView.getCurrentWebViewPackage()
         } catch (_: RuntimeException) {
             null
-        } catch (_: SecurityException) {
-            null
         }
         return SystemSecuritySnapshot(
             collectedAtMillis = clock(),
