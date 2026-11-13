@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.webkit.WebView
+import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
@@ -13,6 +14,8 @@ import java.time.temporal.ChronoUnit
  * vulnerability verdict: public Android APIs do not expose Play Protect results,
  * Play System update date, or Google Play Services beta enrollment reliably.
  */
+internal const val SYSTEM_UPDATE_EVIDENCE_VERSION = "devicecare-system-update/1"
+
 internal data class SystemSecuritySnapshot(
     val collectedAtMillis: Long,
     val androidRelease: String,
@@ -22,7 +25,9 @@ internal data class SystemSecuritySnapshot(
     val playStoreVersion: String?,
     val webViewVersion: String?,
     val webViewProvider: String?,
-)
+) {
+    val contractVersion: String = SYSTEM_UPDATE_EVIDENCE_VERSION
+}
 
 internal enum class PatchAgeSignal { REVIEW_RECOMMENDED, NO_AGE_WARNING, NOT_PROVEN }
 
@@ -105,6 +110,8 @@ internal fun presentSystemSecurity(snapshot: SystemSecuritySnapshot): List<Strin
     fun installed(v: String?) = if (v == null) "NOT_PROVEN (nicht auslesbar)" else
         v + " [VERIFIED: lokal installiert; neueste Release nicht geprüft]"
     return listOf(
+        "Evidence: " + snapshot.contractVersion +
+            " · UTC " + Instant.ofEpochMilli(snapshot.collectedAtMillis),
         "Android: " + snapshot.androidRelease + " (API " + snapshot.apiLevel + ") [VERIFIED: System-API]",
         "Sicherheitspatch: " + patch + " — " + patchAssessment,
         "Google Play-Dienste: " + installed(snapshot.playServicesVersion),
