@@ -36,6 +36,7 @@ A privacy-first Android security and device-health platform, designed as two dif
 - [Product master roadmap — GitHub Issue #1](https://github.com/SvenKulessa/AI-DeviceCare/issues/1)
 
 - [M1 BatteryManager + scoped permissions collectors and privacy rules](docs/M1-COLLECTORS.md)
+- [System- & Google-Sicherheitscheck: eigenständiger lokaler Update-Workflow (Issue #18)](docs/SYSTEM-GOOGLE-SECURITY-WORKFLOW.md)
 
 ## One project folder
 
