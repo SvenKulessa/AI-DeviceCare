@@ -33,5 +33,12 @@ permissions and removes it in an always-run step. Only the manual signed workflo
 uses repository signing secrets; no secret or signing material is used by these
 local checks. Signed-bundle validation and distribution remain separate gates.
 
+## Verification recorded 2026-11-13
+
+Issue #16 / PR #17: the two invalid-input commands above failed with the expected
+messages. The custom-version debug build, unsigned bundle and lint completed with
+exit 0. Independent apkanalyzer output was `42` and `1.2.3-qa`. Governance and all
+19 policy/editorial Node tests passed. No manual signed workflow was dispatched.
+
 Rollback: revert the release workflow, consumer Gradle properties and this document
 as one focused change. No database, runtime permission or customer-data migration.
