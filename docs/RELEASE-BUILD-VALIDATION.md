@@ -46,3 +46,7 @@ as one focused change. No database, runtime permission or customer-data migratio
 ## Integration follow-up for Issue #20
 
 The issue-20 integration candidate retains PR #19's JUnit test dependency and privacy display. All evidence above belongs to PR #17, **not** to the integrated candidate. Re-run the full gate matrix at the new integration Head before asserting readiness.
+
+## Privacy fail-closed gate, Issue #20
+
+The manual signed-AAB workflow now stops **before decoding any keystore** unless the in-app DE/EN policy matches its mirrored Markdown, release placeholders are removed, and a reviewed public HTTPS location is supplied through `docs/PLAY-M1-PRIVACY-RELEASE-APPROVAL.json` with `publicUrl`, `reviewedAt`, `ownerApproved=true`. URL/TLS/worldwide availability must still be read back independently before approval. No file is created by default; signed release remains BLOCKED.
