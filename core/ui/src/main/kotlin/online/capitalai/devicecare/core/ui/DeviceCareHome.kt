@@ -33,6 +33,7 @@ fun DeviceCareHome(
     enterprise: Boolean,
     onInspect: (() -> Unit)? = null,
     onOpenSystemSecurity: (() -> Unit)? = null,
+    onOpenPrivacyPolicy: (() -> Unit)? = null,
     inspectionInProgress: Boolean = false,
     inspectionLines: List<String> = emptyList(),
     inspectionProfileLines: List<String> = emptyList(),
@@ -62,6 +63,13 @@ fun DeviceCareHome(
                 Text("Build evidence: NOT_PROVEN until matched to this artifact.")
                 Text("Device scoring pipeline", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge)
                 Text("Risk score: NOT_ASSESSABLE - no calibrated model or complete device evidence.")
+                if (!enterprise && onOpenPrivacyPolicy != null) {
+                    Text("Datenschutzinformationen jederzeit auch ohne Scan lesen.")
+                    Button(onClick = onOpenPrivacyPolicy,
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("privacy_policy_open")) {
+                        Text("Datenschutz / Privacy policy")
+                    }
+                }
                 if (!enterprise && onOpenSystemSecurity != null) {
                     Text("Systemupdates, Google Play-Dienste, WebView und Play Protect separat prüfen.")
                     Button(onClick = onOpenSystemSecurity,
