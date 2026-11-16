@@ -2,6 +2,7 @@ package online.capitalai.devicecare
 
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.os.Process
 import android.os.SystemClock
@@ -21,6 +22,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import online.capitalai.devicecare.core.ui.DeviceCareHome
+import online.capitalai.devicecare.core.ui.SystemSecurityWorkflowScreen
 import online.capitalai.devicecare.features.battery.AndroidBatteryCollector
 import online.capitalai.devicecare.features.permissions.AndroidPermissionCollector
 import online.capitalai.devicecare.features.permissions.AndroidPermissionScanProfile
@@ -37,9 +39,90 @@ class MainActivity : ComponentActivity() {
             var inspection by remember { mutableStateOf(InspectionDisplay()) }
             var settingsMessage by remember { mutableStateOf<String?>(null) }
             val scope = rememberCoroutineScope()
+            var systemSecurityOpen by remember { mutableStateOf(false) }
+            var systemSecurityBusy by remember { mutableStateOf(false) }
+            var systemSecurityLines by remember { mutableStateOf(emptyList<String>()) }
+            var webViewProvider by remember { mutableStateOf<String?>(null) }
+            if (systemSecurityOpen) {
+                SystemSecurityWorkflowScreen(
+                    busy = systemSecurityBusy,
+                    evidenceLines = systemSecurityLines,
+                    settingsMessage = settingsMessage,
+                    onBack = {
+                        if (!systemSecurityBusy) {
+                            settingsMessage = null
+                            systemSecurityLines = emptyList()
+                            webViewProvider = null
+                            systemSecurityOpen = false
+                        }
+                    },
+                    onInspect = {
+                        if (!systemSecurityBusy) {
+                            systemSecurityBusy = true
+                            settingsMessage = null
+                            scope.launch {
+                                try {
+                                    val snapshot = withContext(Dispatchers.IO) {
+                                        AndroidSystemSecurityReader(applicationContext).read()
+                                    }
+                                    webViewProvider = snapshot.webViewProvider
+                                    systemSecurityLines = presentSystemSecurity(snapshot)
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (_: RuntimeException) {
+                                    systemSecurityLines = listOf(
+                                        "Geräteabfrage fehlgeschlagen: NOT_PROVEN. Keine Daten gespeichert."
+                                    )
+                                } finally {
+                                    systemSecurityBusy = false
+                                }
+                            }
+                        }
+                    },
+                    onOpenSecuritySettings = {
+                        settingsMessage = openSettings(
+                            Intent(Settings.ACTION_SECURITY_SETTINGS),
+                            "Öffne Sicherheit → Google Play-Systemupdate beziehungsweise Systemupdate manuell.",
+                        )
+                    },
+                    onOpenServicesSettings = {
+                        settingsMessage = openSettings(
+                            ownAppSettings("com.google.android.gms"),
+                            "Apps → Google Play-Dienste → App-Info.",
+                        )
+                    },
+                    onOpenWebViewSettings = {
+                        settingsMessage = openSettings(
+                            ownAppSettings(webViewProvider ?: "com.google.android.webview"),
+                            "Apps → Android System WebView oder aktiven WebView-Provider.",
+                        )
+                    },
+                    onOpenPlayStore = {
+                        val launch = packageManager.getLaunchIntentForPackage("com.android.vending")
+                        settingsMessage = if (launch == null) {
+                            "Play Store nicht verfügbar. Prüfe Play Protect und Betaprogramm manuell."
+                        } else {
+                            openSettings(launch, "Play Store → Profil → Play Protect.") ?:
+                                "Im Play Store Profil → Play Protect beziehungsweise Google Play-Dienste öffnen."
+                        }
+                    },
+                    onOpenGoogleReleases = {
+                        settingsMessage = openSettings(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(
+                                "https://support.google.com/product-documentation/answer/14343500?hl=de"
+                            )),
+                            "Offizielle Google-System-Release-Notes im Browser suchen.",
+                        )
+                    },
+                )
+            } else {
             DeviceCareHome(
                 appName = "AI-DeviceCare",
                 enterprise = false,
+                onOpenSystemSecurity = {
+                    settingsMessage = null
+                    systemSecurityOpen = true
+                },
                 inspectionInProgress = busy,
                 inspectionLines = inspection.resultLines,
                 inspectionProfileLines = inspection.profileLines,
@@ -96,6 +179,7 @@ class MainActivity : ComponentActivity() {
                     }
                 },
             )
+            }
         }
     }
 

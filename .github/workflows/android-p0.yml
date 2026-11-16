@@ -51,7 +51,8 @@ jobs:
             :core:quality:testDebugUnitTest \
             :core:scoring:testDebugUnitTest \
             :features:battery:testDebugUnitTest \
-            :features:permissions:testDebugUnitTest
+            :features:permissions:testDebugUnitTest \
+            :apps:devicecare:testDebugUnitTest
       - name: Build two isolated Android apps
         run: gradle --no-daemon :apps:devicecare:assembleDebug :apps:devicecare-plus:assembleDebug
       - name: Android lint (both apps and collectors)

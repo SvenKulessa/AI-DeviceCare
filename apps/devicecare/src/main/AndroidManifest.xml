@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Scoped visibility for local version lookups; no QUERY_ALL_PACKAGES or permissions. -->
+    <queries>
+        <package android:name="com.google.android.gms"/>
+        <package android:name="com.android.vending"/>
+    </queries>
     <application
         android:allowBackup="false"
         android:label="AI-DeviceCare"
