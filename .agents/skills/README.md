@@ -15,4 +15,8 @@ Only repository-root [AGENTS.md](../../AGENTS.md) authorizes work. The local reg
 
 **Routing is advisory, not permission-bearing.** Select by task topic, not chat name. Multiple skills may apply without handoff. A matching skill neither installs a plugin nor grants Android/Play/GitHub access. Do not import Capital-AI's NATS, Render, finance licensing, MARKET role or Docker Required Checks into this Android repository.
 
+## Execution-first statt Analyse-Handoff
+
+Bei ausdrücklich beauftragten Feature- oder Reparaturarbeiten die passenden Skills anwenden, die Ursache reproduzieren, den kleinsten sicheren Fix im autorisierten Feature-Branch implementieren, Positiv-/Negativtests und bestehende CI ausführen, nachgewiesene Fehler eigenständig korrigieren und den Scope-PR mit Commit-, Test-, Rechte- und Rollback-Evidence abschließen. Kopierbare Folgeprompts verlangen konkrete Reparatur und Validierung statt pauschal „keine Änderungen, Mutationen, Merges oder Deployments“ anzuhängen. Ausdrücklich lesende Aufgaben bleiben lesend; No-Merge-/No-Release-Grenzen, Android-Permissions, Play-Policy, Datenschutz und die persönliche Owner-Releasefreigabe aus Root-`AGENTS.md` gelten unverändert. Die delegierte CAPITAL-AI-Merge-/Deploymentregel gilt **nicht** für dieses Repository. Skills schaffen keine neuen Freigaben oder Checks.
+
 Governance-as-Code validator: `node scripts/validate-governance.mjs`. Test suite: `node --test scripts/validate-governance.test.mjs`. They check structure, authority, skill integrity and restricted Android manifest entries; they are not substitutes for real device tests, Play approval, malware detection testing or build verification.
