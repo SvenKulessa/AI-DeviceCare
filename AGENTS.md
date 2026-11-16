@@ -30,6 +30,21 @@ The commercial objective is staged Google Play publication. A feature is only se
 10. **No production mutation without a separate review.** Never silently publish to Play, change backend secrets, edit customer data or enable destructive system actions.
 
 ## Workflow / PR rules
+
+**Execution-first for authorized implementation and repair requests:** Scope, current
+`main` and evidence are checked first; then reproduce the issue, make the smallest
+safe change on a feature branch, run affected positive/negative tests and existing
+CI, repair reproducible failures, and finish the scoped PR with evidence and rollback.
+Do not replace achievable implementation with repeated status-only follow-ups.
+
+**Copyable follow-ups prioritize action:** Recommend the next concrete repair,
+implementation, validation and PR-completion task, not a blanket tail such as
+"no mutations, changes, merges or deployments". Preserve explicit read-only,
+no-merge/no-release constraints of the continued task and all permission, licensing,
+privacy, GitHub, Play and production safeguards. Status-only requests do not
+authorize writes. CAPITAL-AI's delegated merge/deploy rights are **not** inherited
+here; app release remains an explicit owner decision. No new checks or approvals
+are created by this guidance.
 - Confirm current `main`, relevant open PRs, issue scope and file ownership before editing.
 - Work on `feature/*`, `p0/*`, or `fix/*` branches. Do not push directly to `main`.
 - Keep PRs focused, link the corresponding roadmap issue and provide a rollback/revert plan.
