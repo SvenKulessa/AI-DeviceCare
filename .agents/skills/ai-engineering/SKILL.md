@@ -12,7 +12,6 @@ description: "Explainable battery/risk recommendations and on-device or opt-in m
 1. Deterministische Evidenzbasis, Modellgrenzen und Datenklassen feststellen.
 2. Prompt-Injection, Halluzinationen, Fehlklassifikation, Modell- und Datensatzrechte testen.
 3. Modelle dürfen Maßnahmen erklären, aber keine privilegierten Aktionen autonom autorisieren.
-
 4. **Execution-first bei autorisierten Implementierungs- und Reparaturaufträgen:** Ursache reproduzieren, den kleinsten sicheren reversiblen Fix auf einem Feature-Branch selbst implementieren, betroffene Positiv-/Negativtests und bestehende CI ausführen, reproduzierte Fehler korrigieren und den PR mit Evidence und Rollback bis zur regelkonformen Mergeentscheidung abschließen; kein unnötiger Analyse-Handoff. Ausdrückliche Read-only-, No-Merge- und No-Release-Aufträge bleiben verbindlich. CAPITAL-AI-Merge-/Deploymentdelegation wird nicht übernommen; Android-Sicherheit (kein Root/ADB), Permissions, Datenschutz, Lizenzen, Play-Policies und persönliche Owner-Releasefreigabe bleiben unberührt.
 
 ## Eingaben und Nachweise
