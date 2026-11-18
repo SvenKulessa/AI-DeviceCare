@@ -3,6 +3,10 @@ name: DeviceCare-KI eight-hour source mirror and isolated Android tests
 on:
   schedule:
     - cron: '17 */8 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/devicecare-ki-mirror.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +18,7 @@ concurrency:
 
 jobs:
   mirror:
-    name: Sync upstream commit to backup branch and immutable tag
+    name: Create upstream tree snapshot, fast-forward backup and add recovery tag
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     permissions:
