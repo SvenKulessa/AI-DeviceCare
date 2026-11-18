@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">AI-DeviceCare</string>
+    <string name="nav_inspection">Prüfung</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_roadmap">Aufgaben</string>
+    <string name="nav_architecture">Architektur</string>
+    <string name="nav_design">Design</string>
+    <string name="action_back">Zurück</string>
+    <string name="action_clear_search">Suche leeren</string>
+    <string name="action_toggle_theme">Farbmodus wechseln</string>
+    <string name="action_bookmark">Merken</string>
+    <string name="action_start_inspection">Lokale Prüfung starten</string>
+    <string name="action_running_inspection">Prüfung läuft</string>
+    <string name="action_scan_app_permissions">Apps &amp; Rechte scannen</string>
+    <string name="hero_badge">M1 ENTWICKLER-VORSCHAU · LOKAL</string>
+    <string name="hero_title">Gerätepflege mit Beweispflicht</string>
+    <string name="hero_subtitle">On-Demand Akku- &amp; Berechtigungsprüfung ohne Hintergrund-Scans, ohne Rohpaket-Speicherung und ohne erfundene Risiko-Scores.</string>
+    <string name="empty_search_title">Keine Aufgaben oder Pläne gefunden</string>
+    <string name="empty_search_subtitle">Passe deinen Suchbegriff oder den aktiven Status-/Kategorie-Filter an.</string>
+    <string name="privacy_ai_title">KI-Datenschutz-Analyse</string>
+    <string name="privacy_ai_analyze_button">Datenschutz-Tipps mit Gemini erstellen</string>
+    <string name="privacy_ai_retry_button">Erneut analysieren</string>
+</resources>

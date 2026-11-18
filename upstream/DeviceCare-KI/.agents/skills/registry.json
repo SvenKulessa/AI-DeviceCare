@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "CROSS_REPO_DOMAIN_ROUTER@1",
+  "authority": "AGENTS.md",
+  "contract": "SOLO_MAINTAINER_FLOW@2",
+  "referenceRepository": "SvenKulessa/Capital-AI",
+  "referenceRegistry": ".agents/skills/registry.json",
+  "referenceRevision": "73b1e3c8b1e32e8d0efe713f86feb2f634b2ce8a",
+  "instructionMode": "advisory-only; not a separate policy or credential grant",
+  "repository": "SvenKulessa/DeviceCare-KI",
+  "selection": {
+    "primaryDomainRequired": true,
+    "additionalSpecialistsOnEvidence": true,
+    "domains": [
+      "PRODUCT",
+      "PLATFORM",
+      "TRUST",
+      "GROWTH"
+    ],
+    "skillIds": [
+      "mobile-engineering",
+      "trust-engineering",
+      "accessibility-engineering",
+      "ai-engineering",
+      "platform-engineering",
+      "incident-response",
+      "legal-compliance",
+      "revenue-engineering"
+    ],
+    "sourceSkillPathTemplate": ".agents/skills/{skillId}/SKILL.md"
+  },
+  "states": [
+    "ANALYZED",
+    "IMPLEMENTED",
+    "TESTED",
+    "REPAIRED",
+    "MERGE_READY",
+    "MERGED",
+    "VERIFIED",
+    "BLOCKED",
+    "NOT_PROVEN"
+  ],
+  "execution": "Reuse local CI/rulesets; no foreign required checks; bounded repair before a guarded merge."
+}

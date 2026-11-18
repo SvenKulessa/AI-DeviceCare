@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile document for AI-DeviceCare cloud sync",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID matching the document ID"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name (1 to 80 characters)"
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "Optional Google profile photo URL (max 500 characters)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()"
+        }
+      },
+      "required": ["userId", "displayName", "createdAt", "updatedAt"]
+    },
+    "CareNote": {
+      "title": "CareNote",
+      "description": "User-authored device care checklist or inspection note synced to Firestore",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID matching parent users/{userId} wildcard"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title of the device care note (1 to 120 characters)"
+        },
+        "note": {
+          "type": "string",
+          "description": "Detailed note or action item (0 to 1000 characters)"
+        },
+        "category": {
+          "type": "string",
+          "enum": ["GENERAL", "BATTERY", "PERMISSIONS", "QA"],
+          "description": "Domain category for the note"
+        },
+        "resolved": {
+          "type": "boolean",
+          "description": "Whether the care note action item is completed"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()"
+        }
+      },
+      "required": ["userId", "title", "note", "category", "resolved", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Owner-isolated user profile document"
+    },
+    "/users/{userId}/care_notes/{noteId}": {
+      "schema": {
+        "$ref": "#/entities/CareNote"
+      },
+      "description": "Owner-isolated subcollection of device care notes"
+    }
+  }
+}

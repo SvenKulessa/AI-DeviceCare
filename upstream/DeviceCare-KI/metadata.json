@@ -1,0 +1,6 @@
+{
+  "name": "AI-DeviceCare",
+  "description": "Datenschutzorientierte Android-Gerätepflege, M1 Akku- & Berechtigungsprüfung, Qualitäts- & Bewertungs-Pipelines sowie vollständige M0-M5 Roadmap.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
