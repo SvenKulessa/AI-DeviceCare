@@ -38,29 +38,54 @@ jobs:
           git remote add backup "https://github.com/${GITHUB_REPOSITORY}.git"
           git fetch --no-tags upstream refs/heads/main
           source_sha="$(git rev-parse FETCH_HEAD)"
+          source_tree="$(git rev-parse "$source_sha^{tree}")"
           test "${#source_sha}" -eq 40
           target=refs/heads/backup/devicecare-ki-main
-          previous="$(git ls-remote backup "$target" | awk '{print $1}')"
+          existing="$(git ls-remote backup "$target" | awk '{print $1}')"
           echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
-          if [[ "$previous" == "$source_sha" ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Backup already matches source main: $source_sha"
-            exit 0
-          fi
-          if [[ -n "$previous" ]]; then
+          if [[ -n "$existing" ]]; then
             git fetch --no-tags backup "$target"
-            if ! git merge-base --is-ancestor "$previous" "$source_sha"; then
-              echo "::error::Source history rewound or diverged; refusing to overwrite backup."
+            git switch -C mirror FETCH_HEAD
+            test -f .mirror/SOURCE_SHA || {
+              echo "::error::Prior mirror manifest missing; refusing to rewrite backup."
+              exit 1
+            }
+            previous_source="$(cat .mirror/SOURCE_SHA)"
+            if [[ "$previous_source" == "$source_sha" ]]; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              echo "Backup already matches upstream source SHA $source_sha"
+              exit 0
+            fi
+            # Preserve source commit ancestry; an upstream force push must not erase backup history.
+            if ! git cat-file -e "$previous_source^{commit}" 2>/dev/null; then
+              git fetch --no-tags upstream "$previous_source"
+            fi
+            if ! git merge-base --is-ancestor "$previous_source" "$source_sha"; then
+              echo "::error::Upstream history diverged or rewound; backup remains intact."
               exit 1
             fi
+            git rm -r -q --ignore-unmatch upstream/DeviceCare-KI
+          else
+            git switch --orphan mirror
           fi
-          # The token is used only for a Git push. Never checkout or execute source code here.
+          # A repository-scoped GITHUB_TOKEN cannot import another repo's active
+          # .github/workflows. Stage the complete source tree under a neutral
+          # namespace: all bytes, including workflow files, remain recoverable.
+          git read-tree --prefix=upstream/DeviceCare-KI/ -u "$source_sha"
+          mkdir -p .mirror
+          printf '%s\n' "$source_sha" > .mirror/SOURCE_SHA
+          printf '%s\n' "$source_tree" > .mirror/SOURCE_TREE
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "backup: DeviceCare-KI main $source_sha"
+          # Write only to a dedicated backup branch and a unique per-SHA recovery tag.
           header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           git -c http.https://github.com/.extraheader="$header" push --atomic backup \
-            "$source_sha:$target" \
-            "$source_sha:refs/tags/backup/devicecare-ki/$source_sha"
+            HEAD:"$target" \
+            HEAD:"refs/tags/backup/devicecare-ki/$source_sha"
           echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "Mirrored source SHA $source_sha and created immutable recovery tag."
+          echo "Mirrored all upstream files under upstream/DeviceCare-KI with source SHA $source_sha."
 
   android-checks:
     name: Verify mirrored source without write credentials
