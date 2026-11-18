@@ -6,7 +6,7 @@ Owner: SvenKulessa | Canonical source: `SvenKulessa/DeviceCare-KI` | Backup/test
 
 The legacy `AI-DeviceCare/main` stays independent with its existing modular Android project, Android test gates and Ruleset 27343655. Never overwrite it or attempt to combine the two incompatible Gradle project roots.
 
-Workflow: `.github/workflows/devicecare-ki-mirror.yml`. Cron `17 */8 * * *` runs at 00:17, 08:17 and 16:17 UTC (GitHub may delay scheduled jobs) and allows manual `workflow_dispatch`. It pulls the exact current `DeviceCare-KI/main` Git commit SHA and stages a **lossless snapshot of all source files** under a neutral directory `upstream/DeviceCare-KI/` on a separately maintained destination branch:
+Workflow: `.github/workflows/devicecare-ki-mirror.yml`. Cron `17 */8 * * *` runs at 00:17, 08:17 and 16:17 UTC (GitHub may delay scheduled jobs) and allows manual `workflow_dispatch`. The merge of this workflow into legacy `main` triggers a one-time bootstrap via `push` on the workflow file, so it does not need to wait for the next cron. It pulls the exact current `DeviceCare-KI/main` Git commit SHA and stages a **lossless snapshot of all source files** under a neutral directory `upstream/DeviceCare-KI/` on a separately maintained destination branch:
 
 - `refs/heads/backup/devicecare-ki-main`: latest synthetic snapshot commit, fast-forward updates only.
 - `refs/tags/backup/devicecare-ki/<SOURCE_SHA>`: per-source-SHA recovery tag pointing to the synthetic snapshot commit; the script never overwrites a tag.
@@ -46,6 +46,6 @@ For a historical snapshot: `git fetch origin 'refs/tags/backup/devicecare-ki/<FU
 
 ## Validation and state
 
-When the workflow is merged into the destination default branch, run it manually once (or inspect first scheduled run). Record source SHA, matching nested tree SHA, backup branch SHA, tag, green/failed test results and APK evidence. Until the first real run, status is **NOT_PROVEN**; committing the workflow alone is not evidence that 8-hour synchronization executes.
+When the workflow is merged into the destination default branch, inspect the automatically triggered initial `push` run; if the trigger does not execute, run `workflow_dispatch` manually. Record source SHA, matching nested tree SHA, backup branch SHA, tag, green/failed test results and APK evidence. Until the first real run, status is **NOT_PROVEN**; committing the workflow alone is not evidence that 8-hour synchronization executes.
 
 Code PR merges remain subject to their own repository rulesets and CI. Backup synchronization is never a merge into legacy `main` or a Google Play release.
