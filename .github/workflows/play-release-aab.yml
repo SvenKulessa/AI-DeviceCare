@@ -50,6 +50,9 @@ jobs:
           RELEASE_VERSION_CODE: ${{ inputs.version_code }}
         run: gradle --no-daemon :apps:devicecare:tasks -PversionName="$RELEASE_VERSION_NAME" -PversionCode="$RELEASE_VERSION_CODE"
 
+      - name: Fail closed unless public privacy policy is owner approved
+        run: node scripts/verify-play-privacy.mjs --release
+
       - name: Decode keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

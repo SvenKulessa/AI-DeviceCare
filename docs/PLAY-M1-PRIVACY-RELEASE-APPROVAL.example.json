@@ -1,0 +1,16 @@
+{
+  "schema": "AI_DEVICECARE_PLAY_PRIVACY_APPROVAL@1",
+  "publicUrl": "",
+  "reviewedAt": "",
+  "ownerApproved": false,
+  "evidence": {
+    "httpStatus": null,
+    "tlsValid": false,
+    "globallyAccessible": false,
+    "noLogin": false,
+    "htmlNotPdf": false,
+    "matchedInAppVersion": "2026-11-15",
+    "verifiedAabSha256": ""
+  },
+  "note": "Example only. Copy to PLAY-M1-PRIVACY-RELEASE-APPROVAL.json only after owner/legal review and independent public URL readback. No signature or upload authorized."
+}

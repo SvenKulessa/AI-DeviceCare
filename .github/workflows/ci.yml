@@ -26,4 +26,6 @@ jobs:
       - name: Validate repository policy
         run: node scripts/validate-governance.mjs
       - name: Run governance and APK policy fixtures
-        run: node --test scripts/validate-governance.test.mjs scripts/verify-apk-policy.test.mjs
+        run: node --test scripts/validate-governance.test.mjs scripts/verify-apk-policy.test.mjs scripts/verify-play-privacy.test.mjs
+      - name: Compare in-app privacy text with offline DE/EN disclosure drafts
+        run: node scripts/verify-play-privacy.mjs

@@ -22,6 +22,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import online.capitalai.devicecare.core.ui.DeviceCareHome
+import online.capitalai.devicecare.core.ui.PrivacyPolicyScreen
 import online.capitalai.devicecare.core.ui.SystemSecurityWorkflowScreen
 import online.capitalai.devicecare.features.battery.AndroidBatteryCollector
 import online.capitalai.devicecare.features.permissions.AndroidPermissionCollector
@@ -39,11 +40,14 @@ class MainActivity : ComponentActivity() {
             var inspection by remember { mutableStateOf(InspectionDisplay()) }
             var settingsMessage by remember { mutableStateOf<String?>(null) }
             val scope = rememberCoroutineScope()
+            var privacyOpen by remember { mutableStateOf(false) }
             var systemSecurityOpen by remember { mutableStateOf(false) }
             var systemSecurityBusy by remember { mutableStateOf(false) }
             var systemSecurityLines by remember { mutableStateOf(emptyList<String>()) }
             var webViewProvider by remember { mutableStateOf<String?>(null) }
-            if (systemSecurityOpen) {
+            if (privacyOpen) {
+                PrivacyPolicyScreen(onBack = { privacyOpen = false })
+            } else if (systemSecurityOpen) {
                 SystemSecurityWorkflowScreen(
                     busy = systemSecurityBusy,
                     evidenceLines = systemSecurityLines,
@@ -119,6 +123,7 @@ class MainActivity : ComponentActivity() {
             DeviceCareHome(
                 appName = "AI-DeviceCare",
                 enterprise = false,
+                onOpenPrivacyPolicy = { privacyOpen = true },
                 onOpenSystemSecurity = {
                     settingsMessage = null
                     systemSecurityOpen = true

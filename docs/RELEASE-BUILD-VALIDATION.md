@@ -42,3 +42,11 @@ exit 0. Independent apkanalyzer output was `42` and `1.2.3-qa`. Governance and a
 
 Rollback: revert the release workflow, consumer Gradle properties and this document
 as one focused change. No database, runtime permission or customer-data migration.
+
+## Integration follow-up for Issue #20
+
+The issue-20 integration candidate retains PR #19's JUnit test dependency and privacy display. All evidence above belongs to PR #17, **not** to the integrated candidate. Re-run the full gate matrix at the new integration Head before asserting readiness.
+
+## Privacy fail-closed gate, Issue #20
+
+The manual signed-AAB workflow now stops **before decoding any keystore** unless the in-app DE/EN policy matches its mirrored Markdown, release placeholders are removed, and a reviewed public HTTPS location is supplied through `docs/PLAY-M1-PRIVACY-RELEASE-APPROVAL.json` with `publicUrl`, `reviewedAt`, `ownerApproved=true`. URL/TLS/worldwide availability must still be read back independently before approval. No file is created by default; signed release remains BLOCKED.
