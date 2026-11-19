@@ -5,8 +5,29 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Keep production security updates independent of routine version groups.
+    groups:
+      compatible-gradle-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        # 1.19.1 fails :app:checkDebugAarMetadata on compileSdk 36.1:
+        # this dependency requires Android compileSdk >=37 (PR #2).
+        exclude-patterns:
+          - "androidx.core:core-ktx"
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      actions-maintenance:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
