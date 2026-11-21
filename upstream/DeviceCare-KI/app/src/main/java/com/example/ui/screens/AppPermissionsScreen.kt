@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -32,7 +35,9 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -40,6 +45,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
@@ -50,6 +56,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Contacts
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
@@ -61,6 +68,7 @@ import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -78,6 +86,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -88,6 +97,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -118,17 +128,20 @@ import com.example.ai.PrivacySuggestion
 import com.example.devicecare.SettingsLaunchResult
 import com.example.devicecare.appPermissionSettingsIntent
 import com.example.devicecare.openDeviceSettings
+import com.example.features.permissions.AppExportFormat
 import com.example.features.permissions.AppPermissionFilter
 import com.example.features.permissions.AppSectionCategory
 import com.example.features.permissions.CategorizedAppGroup
 import com.example.features.permissions.GrantedDangerousPermission
 import com.example.features.permissions.InstalledAppPermissionInfo
+import com.example.features.permissions.InstalledAppsExporter
 import com.example.features.permissions.InstalledAppsScanResult
 import com.example.features.permissions.SensitivityCategory
 import com.example.ui.DeviceCareUiState
 import com.example.ui.components.MetricRingCard
 import com.example.ui.theme.MonoTokenTextStyle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -145,12 +158,17 @@ fun AppPermissionsScreen(
   privacyAnalysisState: PermissionPrivacyAnalysisState = PermissionPrivacyAnalysisState.Idle,
   onAnalyzePrivacy: () -> Unit = {},
   onClearPrivacyAnalysis: () -> Unit = {},
+  onExportRequested: ((AppExportFormat, Boolean) -> Unit)? = null,
 ) {
   val context = LocalContext.current
   val lifecycleOwner = LocalLifecycleOwner.current
+  val coroutineScope = rememberCoroutineScope()
   val compact = uiState.preferences.compactDensity
   var selectedApp by remember { mutableStateOf<InstalledAppPermissionInfo?>(null) }
   var pendingReturnAppName by remember { mutableStateOf<String?>(null) }
+  var showExportDialog by remember { mutableStateOf(false) }
+  var exportIncludeSystemApps by remember { mutableStateOf(true) }
+  var isWritingExport by remember { mutableStateOf(false) }
   val currentOnStartScan by rememberUpdatedState(onStartScan)
   val currentOnShowSnackbar by rememberUpdatedState(onShowSnackbar)
 
@@ -185,6 +203,66 @@ fun AppPermissionsScreen(
 
   val scanResult = uiState.installedAppsScanResult
 
+  fun writeExportToDestination(uri: Uri?, format: AppExportFormat) {
+    val activeScan = scanResult ?: return
+    if (uri == null) {
+      currentOnShowSnackbar("Export abgebrochen.")
+      return
+    }
+    val includeSystem = exportIncludeSystemApps
+    val exportedAppsCount =
+      InstalledAppsExporter.summarize(activeScan, includeSystem).exportAppsCount
+    val payload =
+      InstalledAppsExporter.export(
+        scanResult = activeScan,
+        format = format,
+        includeSystemApps = includeSystem,
+      )
+    isWritingExport = true
+    coroutineScope.launch {
+      val result = InstalledAppsExporter.writeTextToUri(context, uri, payload)
+      isWritingExport = false
+      result.fold(
+        onSuccess = {
+          val scopeHint = if (includeSystem) "inkl. System-Apps" else "ohne System-Apps"
+          currentOnShowSnackbar(
+            "$exportedAppsCount Apps ($scopeHint) als ${format.label} exportiert."
+          )
+        },
+        onFailure = { error ->
+          currentOnShowSnackbar(
+            "Export fehlgeschlagen: ${error.localizedMessage ?: "Unbekannter Fehler"}"
+          )
+        },
+      )
+    }
+  }
+
+  val createCsvLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+      writeExportToDestination(uri, AppExportFormat.CSV)
+    }
+  val createJsonLauncher =
+    rememberLauncherForActivityResult(
+      ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+      writeExportToDestination(uri, AppExportFormat.JSON)
+    }
+
+  fun launchExport(format: AppExportFormat) {
+    val includeSystem = exportIncludeSystemApps
+    showExportDialog = false
+    if (onExportRequested != null) {
+      onExportRequested(format, includeSystem)
+      return
+    }
+    val suggestedName = InstalledAppsExporter.suggestedFileName(format)
+    when (format) {
+      AppExportFormat.CSV -> createCsvLauncher.launch(suggestedName)
+      AppExportFormat.JSON -> createJsonLauncher.launch(suggestedName)
+    }
+  }
+
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val columns = if (maxWidth >= 680.dp) 2 else 1
 
@@ -218,19 +296,43 @@ fun AppPermissionsScreen(
           }
 
           if (scanResult != null) {
-            FilledTonalIconButton(
-              onClick = onStartScan,
-              enabled = !uiState.installedAppsScanning,
-              modifier =
-                Modifier.minimumInteractiveComponentSize().testTag("rescan_apps_permissions_button"),
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              verticalAlignment = Alignment.CenterVertically,
             ) {
-              if (uiState.installedAppsScanning) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-              } else {
-                Icon(
-                  imageVector = Icons.Filled.Refresh,
-                  contentDescription = "Apps erneut scannen",
-                )
+              if (scanResult.errorMessage == null && scanResult.apps.isNotEmpty()) {
+                FilledTonalIconButton(
+                  onClick = { showExportDialog = true },
+                  enabled = !isWritingExport,
+                  modifier =
+                    Modifier.minimumInteractiveComponentSize().testTag("export_apps_button"),
+                ) {
+                  if (isWritingExport) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                  } else {
+                    Icon(
+                      imageVector = Icons.Filled.Download,
+                      contentDescription = stringResource(R.string.action_export_app_list),
+                    )
+                  }
+                }
+              }
+
+              FilledTonalIconButton(
+                onClick = onStartScan,
+                enabled = !uiState.installedAppsScanning,
+                modifier =
+                  Modifier.minimumInteractiveComponentSize()
+                    .testTag("rescan_apps_permissions_button"),
+              ) {
+                if (uiState.installedAppsScanning) {
+                  CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                  Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Apps erneut scannen",
+                  )
+                }
               }
             }
           }
@@ -389,6 +491,7 @@ fun AppPermissionsScreen(
                 visibleAfterFilter = uiState.filteredInstalledApps.size,
                 activeFilter = uiState.selectedAppFilter,
                 onSelectFilter = onSelectFilter,
+                onOpenExport = { showExportDialog = true },
               )
             }
 
@@ -432,6 +535,19 @@ fun AppPermissionsScreen(
         }
       }
     }
+  }
+
+  if (showExportDialog && scanResult != null && scanResult.errorMessage == null) {
+    ExportInstalledAppsDialog(
+      scanResult = scanResult,
+      hideSystemAppsFilterActive = uiState.hideSystemApps,
+      hasActiveFilterOrSearch =
+        uiState.appSearchQuery.isNotBlank() || uiState.selectedAppFilter != AppPermissionFilter.ALL,
+      includeSystemApps = exportIncludeSystemApps,
+      onToggleIncludeSystemApps = { exportIncludeSystemApps = it },
+      onExportFormat = ::launchExport,
+      onDismiss = { showExportDialog = false },
+    )
   }
 
   val activeDetailApp = selectedApp
@@ -564,7 +680,9 @@ private fun ScanSummaryHeader(
   visibleAfterFilter: Int,
   activeFilter: AppPermissionFilter,
   onSelectFilter: (AppPermissionFilter) -> Unit,
+  onOpenExport: () -> Unit,
 ) {
+  val summary = remember(scanResult) { InstalledAppsExporter.summarize(scanResult, true) }
   Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
     Row(
       modifier = Modifier.fillMaxWidth(),
@@ -623,14 +741,190 @@ private fun ScanSummaryHeader(
             )
           }
           Text(
-            text = "Angezeigt: $visibleAfterFilter Apps · Nur RAM, keine Speicherung",
+            text =
+              "Angezeigt: $visibleAfterFilter · Gesamt: ${summary.totalVisibleApps} (${summary.userAppsCount} Nutzer / ${summary.systemAppsCount} System)",
             style = MonoTokenTextStyle,
             color = MaterialTheme.colorScheme.primary,
           )
         }
       }
     }
+
+    if (scanResult.apps.isNotEmpty()) {
+      FilledTonalButton(
+        onClick = onOpenExport,
+        modifier =
+          Modifier.fillMaxWidth()
+            .minimumInteractiveComponentSize()
+            .testTag("export_apps_summary_button"),
+      ) {
+        Icon(
+          imageVector = Icons.Filled.Download,
+          contentDescription = null,
+          modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text =
+            "${stringResource(R.string.action_export_app_list_with_system)} (${summary.totalVisibleApps})",
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+    }
   }
+}
+
+@Composable
+private fun ExportInstalledAppsDialog(
+  scanResult: InstalledAppsScanResult,
+  hideSystemAppsFilterActive: Boolean,
+  hasActiveFilterOrSearch: Boolean,
+  includeSystemApps: Boolean,
+  onToggleIncludeSystemApps: (Boolean) -> Unit,
+  onExportFormat: (AppExportFormat) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  val summary =
+    remember(scanResult, includeSystemApps) {
+      InstalledAppsExporter.summarize(scanResult, includeSystemApps)
+    }
+
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    modifier = Modifier.testTag("export_apps_dialog"),
+    icon = {
+      Icon(
+        imageVector = Icons.Filled.Download,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.primary,
+      )
+    },
+    title = {
+      Text(
+        text = stringResource(R.string.export_apps_dialog_title),
+        style = MaterialTheme.typography.headlineSmall,
+      )
+    },
+    text = {
+      Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Surface(
+          shape = MaterialTheme.shapes.medium,
+          color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+          Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+          ) {
+            Text(
+              text = "Export-Umfang: ${summary.exportAppsCount} Apps",
+              style = MaterialTheme.typography.titleSmall,
+              color = MaterialTheme.colorScheme.onSurface,
+              modifier = Modifier.testTag("export_apps_count_label"),
+            )
+            Text(
+              text =
+                "${summary.userAppsCount} Nutzer-Apps · ${summary.systemAppsCount} System-Apps (OS-sichtbar)",
+              style = MonoTokenTextStyle,
+              color = MaterialTheme.colorScheme.primary,
+            )
+          }
+        }
+
+        if (hideSystemAppsFilterActive || hasActiveFilterOrSearch) {
+          Text(
+            text =
+              "Hinweis: Aktive Such- und Ansichtsfilter im Tab werden für einen vollständigen Geräte-Export ignoriert.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+
+        Row(
+          modifier =
+            Modifier.fillMaxWidth()
+              .minimumInteractiveComponentSize()
+              .clickable { onToggleIncludeSystemApps(!includeSystemApps) }
+              .testTag("export_include_system_apps_row"),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+          Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(
+              text = "System-Apps einschließen",
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+              text = "${summary.systemAppsCount} vorinstallierte/OS-Systempakete",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          Switch(
+            checked = includeSystemApps,
+            onCheckedChange = onToggleIncludeSystemApps,
+            modifier = Modifier.testTag("export_include_system_apps_switch"),
+          )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Button(
+            onClick = { onExportFormat(AppExportFormat.CSV) },
+            enabled = summary.exportAppsCount > 0,
+            modifier =
+              Modifier.fillMaxWidth()
+                .minimumInteractiveComponentSize()
+                .testTag("export_csv_button"),
+          ) {
+            Icon(
+              imageVector = Icons.Outlined.Description,
+              contentDescription = null,
+              modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.export_apps_csv_button))
+          }
+
+          FilledTonalButton(
+            onClick = { onExportFormat(AppExportFormat.JSON) },
+            enabled = summary.exportAppsCount > 0,
+            modifier =
+              Modifier.fillMaxWidth()
+                .minimumInteractiveComponentSize()
+                .testTag("export_json_button"),
+          ) {
+            Icon(
+              imageVector = Icons.Filled.Download,
+              contentDescription = null,
+              modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.export_apps_json_button))
+          }
+        }
+
+        Text(
+          text =
+            "Speichert App-Namen, Paketnamen, Typ (Nutzer/System), Version und gewährte Laufzeitrechte ausschließlich lokal in eine von dir gewählte Datei (ohne QUERY_ALL_PACKAGES, ohne Speicherberechtigung, ohne Cloud-Upload).",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    },
+    confirmButton = {},
+    dismissButton = {
+      TextButton(
+        onClick = onDismiss,
+        modifier = Modifier.minimumInteractiveComponentSize().testTag("export_cancel_button"),
+      ) {
+        Text(stringResource(R.string.export_apps_cancel))
+      }
+    },
+  )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

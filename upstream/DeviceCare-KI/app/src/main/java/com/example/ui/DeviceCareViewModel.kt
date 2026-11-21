@@ -22,11 +22,15 @@ import com.example.core.scoring.DeviceScoringDispatcher
 import com.example.core.scoring.StaticDeviceModelRegistry
 import com.example.data.DesignPreferences
 import com.example.data.DesignPreferencesRepository
+import com.example.devicecare.AndroidSystemSecurityReader
 import com.example.devicecare.InspectionResult
+import com.example.devicecare.SystemSecuritySnapshot
 import com.example.devicecare.presentInspection
 import com.example.features.battery.AndroidBatteryCollector
 import com.example.features.battery.AndroidBatteryHealthMonitor
 import com.example.features.battery.BatteryDashboardSnapshot
+import com.example.features.battery.BatteryTrendPoint
+import com.example.features.battery.BatteryTrendRecorder
 import com.example.features.permissions.AndroidPermissionCollector
 import com.example.features.permissions.AndroidPermissionScanProfile
 import com.example.features.permissions.AppPermissionFilter
@@ -120,6 +124,11 @@ data class DeviceCareUiState(
   // Live Battery Health Monitor Dashboard (foreground/on-demand, RAM-only)
   val batteryMonitorLoading: Boolean = false,
   val batterySnapshot: BatteryDashboardSnapshot? = null,
+  val batteryTrendHistory: List<BatteryTrendPoint> = emptyList(),
+  // On-demand System & Google Security Check (RAM-only, never persisted)
+  val systemSecurityChecking: Boolean = false,
+  val systemSecuritySnapshot: SystemSecuritySnapshot? = null,
+  val systemSecurityErrorMessage: String? = null,
 ) {
   val verifiedCount: Int
     get() =
@@ -172,6 +181,10 @@ class DeviceCareViewModel(application: Application) : AndroidViewModel(applicati
     MutableStateFlow(setOf(AppSectionCategory.STANDARD))
   private val batteryMonitorLoadingFlow = MutableStateFlow(false)
   private val batterySnapshotFlow = MutableStateFlow<BatteryDashboardSnapshot?>(null)
+  private val batteryTrendHistoryFlow = MutableStateFlow<List<BatteryTrendPoint>>(emptyList())
+  private val systemSecurityCheckingFlow = MutableStateFlow(false)
+  private val systemSecuritySnapshotFlow = MutableStateFlow<SystemSecuritySnapshot?>(null)
+  private val systemSecurityErrorFlow = MutableStateFlow<String?>(null)
 
   private val sandboxDispatcher =
     DeviceScoringDispatcher(
@@ -222,8 +235,21 @@ class DeviceCareViewModel(application: Application) : AndroidViewModel(applicati
     }
 
   private val batteryTupleFlow =
-    combine(batteryMonitorLoadingFlow, batterySnapshotFlow) { loading, snapshot ->
-      loading to snapshot
+    combine(
+      batteryMonitorLoadingFlow,
+      batterySnapshotFlow,
+      batteryTrendHistoryFlow,
+    ) { loading, snapshot, history ->
+      Triple(loading, snapshot, history)
+    }
+
+  private val systemSecurityTupleFlow =
+    combine(
+      systemSecurityCheckingFlow,
+      systemSecuritySnapshotFlow,
+      systemSecurityErrorFlow,
+    ) { checking, snapshot, err ->
+      Triple(checking, snapshot, err)
     }
 
   private val inspectionTupleFlow =
@@ -233,8 +259,21 @@ class DeviceCareViewModel(application: Application) : AndroidViewModel(applicati
       isStaleFlow,
       settingsMessageFlow,
       batteryTupleFlow,
-    ) { busy, result, stale, msg, batteryPair ->
-      InspectionBundle(busy, result, stale, msg, batteryPair.first, batteryPair.second)
+    ) { busy, result, stale, msg, batteryTriple ->
+      InspectionBundle(
+        busy = busy,
+        result = result,
+        stale = stale,
+        msg = msg,
+        batteryLoading = batteryTriple.first,
+        batterySnapshot = batteryTriple.second,
+        batteryTrendHistory = batteryTriple.third,
+      )
+    }
+
+  private val combinedInspectionTupleFlow =
+    combine(inspectionTupleFlow, systemSecurityTupleFlow) { insp, sec ->
+      insp to sec
     }
 
   private data class InspectionBundle(
@@ -244,6 +283,7 @@ class DeviceCareViewModel(application: Application) : AndroidViewModel(applicati
     val msg: String?,
     val batteryLoading: Boolean,
     val batterySnapshot: BatteryDashboardSnapshot?,
+    val batteryTrendHistory: List<BatteryTrendPoint>,
   )
 
   private data class AppPermissionsBundle(
@@ -284,11 +324,12 @@ class DeviceCareViewModel(application: Application) : AndroidViewModel(applicati
   val uiState: StateFlow<DeviceCareUiState> =
     combine(
         repository.preferencesFlow,
-        inspectionTupleFlow,
+        combinedInspectionTupleFlow,
         filterFlow,
         sandboxFlow,
         appPermissionsTupleFlow,
-      ) { prefs, insp, filter, sandbox, appPerms ->
+      ) { prefs, inspPair, filter, sandbox, appPerms ->
+        val (insp, sec) = inspPair
         val filtered =
           DeviceCareRoadmapData.tasks.filter { task ->
             val effectiveStatus =
@@ -403,6 +444,10 @@ class DeviceCareViewModel(application: Application) : AndroidViewModel(applicati
             },
           batteryMonitorLoading = insp.batteryLoading,
           batterySnapshot = insp.batterySnapshot,
+          batteryTrendHistory = insp.batteryTrendHistory,
+          systemSecurityChecking = sec.first,
+          systemSecuritySnapshot = sec.second,
+          systemSecurityErrorMessage = sec.third,
         )
       }
       .stateIn(
@@ -521,6 +566,8 @@ class DeviceCareViewModel(application: Application) : AndroidViewModel(applicati
             AndroidBatteryHealthMonitor(context).readSnapshot(batteryIntent)
           }
         batterySnapshotFlow.value = snapshot
+        batteryTrendHistoryFlow.value =
+          BatteryTrendRecorder.append(batteryTrendHistoryFlow.value, snapshot)
       } catch (cancelled: CancellationException) {
         throw cancelled
       } catch (_: RuntimeException) {
@@ -533,6 +580,42 @@ class DeviceCareViewModel(application: Application) : AndroidViewModel(applicati
         batteryMonitorLoadingFlow.value = false
       }
     }
+  }
+
+  /**
+   * Expliziter On-Demand System- & Google-Sicherheitscheck (RAM-only, keine Persistenz).
+   */
+  fun runSystemSecurityCheck() {
+    if (systemSecurityCheckingFlow.value) return
+    systemSecurityCheckingFlow.value = true
+    systemSecurityErrorFlow.value = null
+
+    viewModelScope.launch {
+      try {
+        val context = getApplication<Application>().applicationContext
+        val snapshot =
+          withContext(Dispatchers.IO) {
+            AndroidSystemSecurityReader(context).read()
+          }
+        systemSecuritySnapshotFlow.value = snapshot
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (_: RuntimeException) {
+        systemSecurityErrorFlow.value =
+          "System- & Google-Abfrage lokal fehlgeschlagen (NOT_PROVEN). Keine Daten gespeichert."
+      } finally {
+        systemSecurityCheckingFlow.value = false
+      }
+    }
+  }
+
+  /**
+   * Startet Berechtigungsscan, System-Sicherheitscheck und lokale Prüfung auf expliziten Nutzerwunsch.
+   */
+  fun runPrivacyAndSecurityOverview() {
+    startInstalledAppsScan()
+    runSystemSecurityCheck()
+    startManualInspection()
   }
 
   fun updateAppSearchQuery(query: String) {

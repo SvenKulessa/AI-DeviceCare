@@ -87,6 +87,7 @@ import com.example.features.battery.BatteryDashboardSnapshot
 import com.example.features.battery.ChargingStatus
 import com.example.features.battery.RemainingTimeSource
 import com.example.ui.DeviceCareUiState
+import com.example.ui.components.BatteryHealthTrendChartCard
 import com.example.ui.theme.MonoTokenTextStyle
 import java.text.DateFormat
 import java.util.Date
@@ -255,6 +256,13 @@ fun BatteryDashboardScreen(
         item {
           Box(modifier = Modifier.fillMaxWidth().widthIn(max = 880.dp)) {
             RemainingUsageTimeCard(snapshot = snapshot)
+          }
+        }
+
+        // D3-style Battery Health & Telemetry Trend Line Chart
+        item {
+          Box(modifier = Modifier.fillMaxWidth().widthIn(max = 880.dp)) {
+            BatteryHealthTrendChartCard(history = uiState.batteryTrendHistory)
           }
         }
 

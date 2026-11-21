@@ -11,9 +11,9 @@ import java.util.Locale
 import java.util.TimeZone
 
 /** On-demand local evidence; not a malware verdict or independent Google/OEM update lookup. */
-internal const val SYSTEM_UPDATE_EVIDENCE_VERSION = "devicecare-system-update/1"
+const val SYSTEM_UPDATE_EVIDENCE_VERSION = "devicecare-system-update/1"
 
-internal data class SystemSecuritySnapshot(
+data class SystemSecuritySnapshot(
   val collectedAtMillis: Long,
   val androidRelease: String,
   val apiLevel: Int,
@@ -26,9 +26,9 @@ internal data class SystemSecuritySnapshot(
   val contractVersion: String = SYSTEM_UPDATE_EVIDENCE_VERSION
 }
 
-internal enum class PatchAgeSignal { REVIEW_RECOMMENDED, NO_AGE_WARNING, NOT_PROVEN }
+enum class PatchAgeSignal { REVIEW_RECOMMENDED, NO_AGE_WARNING, NOT_PROVEN }
 
-internal object PatchAgePolicy {
+object PatchAgePolicy {
   /** Heuristic only, not CVE/OEM knowledge. Avoid java.time: minSdk is 24. */
   fun classify(patch: String?, nowMillis: Long): PatchAgeSignal {
     if (patch.isNullOrBlank() || nowMillis < 0L || !patch.matches(Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}"))) {
@@ -53,7 +53,7 @@ internal object PatchAgePolicy {
 }
 
 /** Exact package visibility only; no general inventory, network, background work, or upload. */
-internal class AndroidSystemSecurityReader(
+class AndroidSystemSecurityReader(
   private val context: Context,
   private val clock: () -> Long = System::currentTimeMillis,
 ) {
@@ -86,7 +86,7 @@ internal class AndroidSystemSecurityReader(
     value?.takeIf { it.length in 1..80 && it.none(Character::isISOControl) }
 }
 
-internal fun presentSystemSecurity(snapshot: SystemSecuritySnapshot): List<String> {
+fun presentSystemSecurity(snapshot: SystemSecuritySnapshot): List<String> {
   val utc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ROOT).apply {
     timeZone = TimeZone.getTimeZone("UTC")
   }.format(Date(snapshot.collectedAtMillis))

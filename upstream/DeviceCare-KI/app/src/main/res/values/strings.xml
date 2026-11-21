@@ -20,4 +20,24 @@
     <string name="privacy_ai_title">KI-Datenschutz-Analyse</string>
     <string name="privacy_ai_analyze_button">Datenschutz-Tipps mit Gemini erstellen</string>
     <string name="privacy_ai_retry_button">Erneut analysieren</string>
+    <string name="privacy_summary_title">Datenschutz-Cockpit</string>
+    <string name="privacy_summary_subtitle">Berechtigungen &amp; Sicherheitscheck</string>
+    <string name="privacy_summary_run_all">Komplett-Check starten</string>
+    <string name="privacy_summary_running">Checks laufen …</string>
+    <string name="privacy_summary_open_apps">Apps &amp; Rechte verwalten</string>
+    <string name="privacy_summary_open_security">System-Check Details</string>
+    <string name="privacy_summary_gemini_title">Gemini Nächste Schritte</string>
+    <string name="privacy_summary_gemini_analyze">Nächste Schritte mit Gemini analysieren</string>
+    <string name="privacy_summary_gemini_reanalyze">Erneut auswerten</string>
+    <string name="privacy_summary_gemini_retry">Analyse wiederholen</string>
+    <string name="action_export_app_list">App-Liste exportieren</string>
+    <string name="action_export_app_list_with_system">App-Liste exportieren (inkl. System-Apps)</string>
+    <string name="export_apps_dialog_title">App-Liste exportieren</string>
+    <string name="export_apps_csv_button">Als CSV speichern</string>
+    <string name="export_apps_json_button">Als JSON speichern</string>
+    <string name="export_apps_share_csv_button">Als CSV-Datei teilen</string>
+    <string name="export_apps_share_json_button">Als JSON-Datei teilen</string>
+    <string name="export_apps_scan_first_button">OS-sichtbare Apps lokal einlesen</string>
+    <string name="export_apps_chooser_title">App-Liste teilen</string>
+    <string name="export_apps_cancel">Abbrechen</string>
 </resources>

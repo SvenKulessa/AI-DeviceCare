@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import com.example.ai.AiAdvisorViewModel
@@ -144,6 +145,29 @@ class ExampleRobolectricTest {
     composeTestRule.onNodeWithTag("google_sign_in_button").assertExists()
 
     composeTestRule.onNodeWithTag("cloud_back_button").performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag("hero_inspection_card").assertExists()
+  }
+
+  @Test
+  fun `privacy summary dashboard opens from inspection hero runs combined check and navigates back`() {
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag("open_privacy_summary_button").performScrollTo().performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.onNodeWithTag("privacy_summary_screen").assertExists()
+    composeTestRule.onNodeWithTag("privacy_summary_hero_card").assertExists()
+    composeTestRule.onNodeWithTag("privacy_summary_metrics_grid").assertExists()
+
+    composeTestRule.onNodeWithTag("privacy_summary_run_all_button").performScrollTo().performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule
+      .onNodeWithTag("privacy_summary_list")
+      .performScrollToNode(hasTestTag("privacy_summary_advice_list"))
+    composeTestRule.onNodeWithTag("privacy_summary_advice_list").assertExists()
+
+    composeTestRule.onNodeWithTag("privacy_summary_back").performClick()
     composeTestRule.waitForIdle()
     composeTestRule.onNodeWithTag("hero_inspection_card").assertExists()
   }

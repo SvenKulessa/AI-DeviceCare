@@ -6,11 +6,13 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import com.example.ai.PermissionPrivacyAnalysisState
 import com.example.ai.PrivacyAnalysisReport
 import com.example.ai.PrivacyRecommendationPriority
 import com.example.ai.PrivacySuggestion
+import com.example.features.permissions.AppExportFormat
 import com.example.features.permissions.GrantedDangerousPermission
 import com.example.features.permissions.InstalledAppPermissionInfo
 import com.example.features.permissions.InstalledAppsScanResult
@@ -53,6 +55,16 @@ class PermissionPrivacyUiTest {
             description = "Genauer Standort",
           ),
         ),
+    )
+
+  private val sampleSystemApp =
+    InstalledAppPermissionInfo(
+      packageName = "com.android.settings",
+      appName = "Einstellungen",
+      isSystemApp = true,
+      totalRequestedPermissions = 6,
+      grantedDangerousPermissions = emptyList(),
+      versionName = "15",
     )
 
   private val sampleScan =
@@ -201,5 +213,63 @@ class PermissionPrivacyUiTest {
       .performScrollToNode(hasTestTag("privacy_suggestion_0"))
     composeTestRule.onNodeWithTag("privacy_suggestion_0").assertExists()
     composeTestRule.onNodeWithText("Doc Scanner · Rechte").assertExists()
+  }
+
+  @Test
+  fun `export dialog includes system apps by default even when hideSystemApps filter is active`() {
+    val mixedScan =
+      InstalledAppsScanResult(
+        scannedAtMillis = 12_000L,
+        visiblePackageCount = 2,
+        apps = listOf(sampleApp, sampleSystemApp),
+      )
+    val filteredState =
+      DeviceCareUiState(
+        installedAppsScanResult = mixedScan,
+        hideSystemApps = true,
+        filteredInstalledApps = listOf(sampleApp),
+        categorizedAppSections = PermissionSensitivityClassifier.categorizeApps(listOf(sampleApp)),
+      )
+    var capturedFormat: AppExportFormat? = null
+    var capturedIncludeSystem: Boolean? = null
+
+    composeTestRule.setContent {
+      FormwerkTheme {
+        AppPermissionsScreen(
+          uiState = filteredState,
+          privacyAnalysisState = PermissionPrivacyAnalysisState.Idle,
+          onStartScan = {},
+          onSearchQueryChange = {},
+          onSelectFilter = {},
+          onToggleHideSystemApps = {},
+          onToggleSectionCollapsed = {},
+          onShowSnackbar = {},
+          onExportRequested = { format, includeSystem ->
+            capturedFormat = format
+            capturedIncludeSystem = includeSystem
+          },
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("export_apps_button").performClick()
+    composeTestRule.onNodeWithTag("export_apps_dialog").assertExists()
+    composeTestRule
+      .onNodeWithTag("export_apps_count_label")
+      .assertTextContains("Export-Umfang: 2 Apps")
+
+    composeTestRule.onNodeWithTag("export_csv_button").performScrollTo().performClick()
+    assertEquals(AppExportFormat.CSV, capturedFormat)
+    assertEquals(true, capturedIncludeSystem)
+
+    // Reopen dialog, turn off system apps, and verify count and JSON export flag
+    composeTestRule.onNodeWithTag("export_apps_button").performClick()
+    composeTestRule.onNodeWithTag("export_include_system_apps_switch").performScrollTo().performClick()
+    composeTestRule
+      .onNodeWithTag("export_apps_count_label")
+      .assertTextContains("Export-Umfang: 1 Apps")
+    composeTestRule.onNodeWithTag("export_json_button").performScrollTo().performClick()
+    assertEquals(AppExportFormat.JSON, capturedFormat)
+    assertEquals(false, capturedIncludeSystem)
   }
 }

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
@@ -90,6 +91,7 @@ fun InspectionScreen(
   onOpenAiAdvisor: () -> Unit,
   onOpenCloudSync: () -> Unit,
   onOpenSystemSecurity: () -> Unit,
+  onOpenPrivacySummary: () -> Unit,
   onOpenAppPermissions: () -> Unit,
   onOpenRoadmap: () -> Unit,
   modifier: Modifier = Modifier,
@@ -138,6 +140,7 @@ fun InspectionScreen(
             onOpenAiAdvisor = onOpenAiAdvisor,
             onOpenCloudSync = onOpenCloudSync,
             onOpenSystemSecurity = onOpenSystemSecurity,
+            onOpenPrivacySummary = onOpenPrivacySummary,
             onOpenRoadmap = onOpenRoadmap,
             compact = compact,
           )
@@ -329,6 +332,7 @@ private fun HeroInspectionCard(
   onOpenAiAdvisor: () -> Unit,
   onOpenCloudSync: () -> Unit,
   onOpenSystemSecurity: () -> Unit,
+  onOpenPrivacySummary: () -> Unit,
   onOpenRoadmap: () -> Unit,
   compact: Boolean,
 ) {
@@ -471,6 +475,21 @@ private fun HeroInspectionCard(
                 Icon(Icons.Filled.Security, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("System- & Google-Check")
+              }
+
+              FilledTonalButton(
+                onClick = onOpenPrivacySummary,
+                modifier =
+                  Modifier.minimumInteractiveComponentSize()
+                    .testTag("open_privacy_summary_button"),
+              ) {
+                Icon(
+                  imageVector = Icons.Filled.Shield,
+                  contentDescription = null,
+                  modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Datenschutz-Cockpit")
               }
             }
           } else {

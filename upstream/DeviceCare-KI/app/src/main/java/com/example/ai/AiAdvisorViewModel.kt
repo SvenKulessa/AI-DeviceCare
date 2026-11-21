@@ -3,6 +3,7 @@ package com.example.ai
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.devicecare.PrivacySummaryReport
 import com.example.features.battery.BatteryDashboardSnapshot
 import com.example.features.permissions.InstalledAppsScanResult
 import com.google.firebase.Firebase
@@ -53,9 +54,10 @@ data class AiAdvisorUiState(
 
 class AiAdvisorViewModel internal constructor(
   private val privacyAnalyzer: PermissionPrivacyAnalyzerService,
+  private val nextStepsService: PostureNextStepsService = GeminiPostureNextStepsService(),
 ) : ViewModel() {
 
-  constructor() : this(GeminiPermissionPrivacyAnalyzerService())
+  constructor() : this(GeminiPermissionPrivacyAnalyzerService(), GeminiPostureNextStepsService())
 
   private val messageIdGen = AtomicLong(1L)
 
@@ -83,6 +85,11 @@ class AiAdvisorViewModel internal constructor(
     MutableStateFlow<PermissionPrivacyAnalysisState>(PermissionPrivacyAnalysisState.Idle)
   val privacyAnalysisState: StateFlow<PermissionPrivacyAnalysisState> =
     _privacyAnalysisState.asStateFlow()
+
+  private val _postureNextStepsState =
+    MutableStateFlow<PostureNextStepsState>(PostureNextStepsState.Idle)
+  val postureNextStepsState: StateFlow<PostureNextStepsState> =
+    _postureNextStepsState.asStateFlow()
 
   fun analyzePermissionsPrivacy(scanResult: InstalledAppsScanResult?) {
     if (scanResult == null || scanResult.errorMessage != null) {
@@ -123,6 +130,43 @@ class AiAdvisorViewModel internal constructor(
 
   fun clearPrivacyAnalysis() {
     _privacyAnalysisState.value = PermissionPrivacyAnalysisState.Idle
+  }
+
+  fun generatePostureNextSteps(
+    summaryReport: PrivacySummaryReport,
+    batterySnapshot: BatteryDashboardSnapshot? = null,
+  ) {
+    if (_postureNextStepsState.value is PostureNextStepsState.Loading) return
+
+    _postureNextStepsState.value = PostureNextStepsState.Loading
+    viewModelScope.launch {
+      try {
+        val report =
+          withTimeout(REQUEST_TIMEOUT_MILLIS) {
+            nextStepsService.analyzeDevicePosture(summaryReport, batterySnapshot)
+          }
+        _postureNextStepsState.value = PostureNextStepsState.Success(report)
+      } catch (e: TimeoutCancellationException) {
+        Log.e(TAG, "Posture next-steps generation timed out", e)
+        _postureNextStepsState.value =
+          PostureNextStepsState.Error(
+            "Zeitüberschreitung nach 60 Sekunden. Bitte Verbindung prüfen und erneut versuchen."
+          )
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(TAG, "Posture next-steps generation failed", e)
+        _postureNextStepsState.value =
+          PostureNextStepsState.Error(
+            e.localizedMessage?.takeIf { it.isNotBlank() }
+              ?: "Gemini-Auswertung des Gerätestatus fehlgeschlagen."
+          )
+      }
+    }
+  }
+
+  fun clearPostureNextSteps() {
+    _postureNextStepsState.value = PostureNextStepsState.Idle
   }
 
   fun toggleIncludeAnonymizedContext() {

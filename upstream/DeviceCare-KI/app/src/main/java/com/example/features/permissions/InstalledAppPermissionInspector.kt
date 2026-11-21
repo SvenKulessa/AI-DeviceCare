@@ -96,6 +96,7 @@ data class InstalledAppPermissionInfo(
   val isSystemApp: Boolean,
   val totalRequestedPermissions: Int,
   val grantedDangerousPermissions: List<GrantedDangerousPermission>,
+  val versionName: String? = null,
 ) {
   val hasHighSensitivityAccess: Boolean
     get() = grantedDangerousPermissions.any { it.category.isHighSensitivity }
@@ -332,6 +333,7 @@ class InstalledAppPermissionInspector(
             isSystemApp = isSystem,
             totalRequestedPermissions = pkg.requestedPermissions?.size ?: 0,
             grantedDangerousPermissions = grantedDangerous,
+            versionName = pkg.versionName?.takeIf { it.isNotBlank() },
           )
         }
           .sortedWith(

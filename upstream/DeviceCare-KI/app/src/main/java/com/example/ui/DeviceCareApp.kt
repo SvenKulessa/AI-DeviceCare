@@ -64,6 +64,7 @@ import com.example.ui.screens.BatteryDashboardScreen
 import com.example.ui.screens.CloudSyncScreen
 import com.example.ui.screens.DesignSystemScreen
 import com.example.ui.screens.InspectionScreen
+import com.example.ui.screens.PrivacySummaryScreen
 import com.example.ui.screens.SystemSecurityFeatureScreen
 import com.example.ui.screens.RoadmapScreen
 import com.example.ui.screens.TaskDetailScreen
@@ -76,6 +77,7 @@ object Routes {
   const val ROUTE_AI_ADVISOR = "ai_advisor"
   const val ROUTE_CLOUD_SYNC = "cloud_sync"
   const val ROUTE_SYSTEM_SECURITY = "system_security"
+  const val ROUTE_PRIVACY_SUMMARY = "privacy_summary"
   const val ROUTE_APPS = "apps"
   const val ROUTE_ROADMAP = "roadmap"
   const val ROUTE_ARCHITECTURE = "architecture"
@@ -140,6 +142,7 @@ fun DeviceCareApp(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val aiState by aiAdvisorViewModel.uiState.collectAsStateWithLifecycle()
   val privacyAnalysisState by aiAdvisorViewModel.privacyAnalysisState.collectAsStateWithLifecycle()
+  val postureNextStepsState by aiAdvisorViewModel.postureNextStepsState.collectAsStateWithLifecycle()
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentDestination = navBackStackEntry?.destination
@@ -282,6 +285,10 @@ fun DeviceCareApp(
                       performHaptic()
                       navController.navigate(Routes.ROUTE_SYSTEM_SECURITY)
                     },
+                    onOpenPrivacySummary = {
+                      performHaptic()
+                      navController.navigate(Routes.ROUTE_PRIVACY_SUMMARY)
+                    },
                     onOpenAppPermissions = { navigateTopLevel(Routes.ROUTE_APPS) },
                     onOpenRoadmap = { navigateTopLevel(Routes.ROUTE_ROADMAP) },
                   )
@@ -330,6 +337,44 @@ fun DeviceCareApp(
 
                 composable(Routes.ROUTE_SYSTEM_SECURITY) {
                   SystemSecurityFeatureScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(Routes.ROUTE_PRIVACY_SUMMARY) {
+                  PrivacySummaryScreen(
+                    uiState = uiState,
+                    privacyAnalysisState = privacyAnalysisState,
+                    postureNextStepsState = postureNextStepsState,
+                    onBack = { navController.popBackStack() },
+                    onRunCombinedCheck = {
+                      performHaptic()
+                      viewModel.runPrivacyAndSecurityOverview()
+                    },
+                    onAnalyzePostureWithGemini = { summaryReport ->
+                      performHaptic()
+                      aiAdvisorViewModel.generatePostureNextSteps(
+                        summaryReport = summaryReport,
+                        batterySnapshot = uiState.batterySnapshot,
+                      )
+                    },
+                    onClearPostureNextSteps = {
+                      performHaptic()
+                      aiAdvisorViewModel.clearPostureNextSteps()
+                    },
+                    onOpenAppPermissions = { navigateTopLevel(Routes.ROUTE_APPS) },
+                    onOpenSystemSecurity = {
+                      performHaptic()
+                      navController.navigate(Routes.ROUTE_SYSTEM_SECURITY)
+                    },
+                    onOpenAiAdvisor = {
+                      performHaptic()
+                      navController.navigate(Routes.ROUTE_AI_ADVISOR)
+                    },
+                    onShowSnackbar = ::showMessage,
+                    onScanInstalledApps = {
+                      performHaptic()
+                      viewModel.startInstalledAppsScan()
+                    },
+                  )
                 }
 
                 composable(Routes.ROUTE_APPS) {
